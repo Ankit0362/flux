@@ -1,0 +1,208 @@
+datasource db {
+  provider  = "postgresql"
+  // DB-08: In serverless environments (e.g. Vercel), connection pooling is required.
+  // The url should point to a connection pooler (like PgBouncer or Supabase connection pool)
+  // to avoid exhausting database connections during traffic spikes.
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Enums for type safety and database integrity
+enum CommitmentStatus {
+  PENDING
+  COMPLETED
+  SNOOZED
+  CANCELLED
+}
+
+enum EventStatus {
+  CONFIRMED
+  TENTATIVE
+  CANCELLED
+}
+
+enum EmailDirection {
+  INBOUND
+  OUTBOUND
+}
+
+model User {
+  id                String   @id @default(uuid())
+  email             String   @unique
+  name              String?
+  calendarSyncToken String?
+  // Gmail incremental sync cursor — stores the highest historyId seen.
+  // On webhook, we use this to determine what has changed since last sync.
+  // NULL means no incremental sync has been anchored yet (bootstrap required).
+  gmailHistoryId    String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relations
+  contacts       Contact[]
+  emailThreads   EmailThread[]
+  calendarEvents CalendarEvent[]
+  commitments    Commitment[]
+
+  @@index([createdAt])
+}
+
+model Contact {
+  id                String          @id @default(uuid())
+  userId            String
+  user              User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  email             String          
+  name              String?
+  avatarUrl         String?
+  phoneNumber       String?
+  company           String?
+  relationshipScore Int?            // Score indicating relationship strength (0-100)
+  relationshipHealth String?         // "Strong", "Neutral", "At Risk"
+  relationshipReason String?         @db.Text
+  totalExchanges    Int             @default(0)
+  inboundCount      Int             @default(0)
+  outboundCount     Int             @default(0)
+  openCommitments   Int             @default(0)
+  completedCommitments Int          @default(0)
+  lastInteractionAt DateTime?
+  metadata          Json?           // Flexible storage for AI-extracted details (e.g., birthday, hobbies)
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  // Relations
+  calendarEvents CalendarEvent[] // Implicit many-to-many for attendees
+  commitments    Commitment[]    
+
+  @@unique([userId, email])
+  @@index([userId])
+  @@index([relationshipScore])
+}
+
+model EmailThread {
+  id             String          @id @default(uuid())
+  userId         String
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  externalId     String          @unique // Gmail thread ID
+  subject        String
+  snippet        String?
+  labels         String[]        // Gmail labels (e.g., ["INBOX", "UNREAD", "CATEGORY_PERSONAL"])
+  historyId      String?         // Gmail history ID for sync alignment
+  lastSyncedAt   DateTime?
+  metadata       Json?           // Extensible thread metadata
+  
+  // Follow-Up Intelligence
+  followUpNeeded       Boolean?
+  followUpUrgency      String?         // "LOW", "MEDIUM", "HIGH", "CRITICAL"
+  followUpReason       String?         @db.Text
+  lastMessageDirection EmailDirection?
+  lastMessageAt        DateTime?
+
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  // Relations
+  messages       EmailMessage[]
+  commitments    Commitment[]
+
+  @@index([userId])
+  @@index([externalId])
+  @@index([userId, lastMessageAt(sort: Desc)])
+}
+
+model EmailMessage {
+  id             String          @id @default(uuid())
+  threadId       String
+  thread         EmailThread     @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  externalId     String          @unique // Gmail message ID
+  sender         String          // Raw sender address e.g., "Jane Doe <jane@example.com>"
+  recipients     String[]        // List of recipient emails
+  subject        String
+  body           String          @db.Text
+  bodyHtml       String?         @db.Text
+  direction      EmailDirection  // Tracks whether email was sent or received
+  receivedAt     DateTime
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  // Relations
+  commitments    Commitment[]
+
+  @@index([threadId])
+  @@index([externalId])
+  @@index([direction])
+}
+
+model CalendarEvent {
+  id             String          @id @default(uuid())
+  userId         String
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  calendarId     String          @default("primary")
+  externalId     String          // Google Calendar event ID
+  title          String
+  description    String?         @db.Text
+  location       String?
+  startAt        DateTime
+  endAt          DateTime
+  isAllDay       Boolean         @default(false)
+  status         EventStatus     @default(CONFIRMED)
+  metadata       Json?           // Extensible event metadata (e.g., virtual link, parsed action items)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  // Relations
+  attendees      Contact[]       // Implicit many-to-many
+  commitments    Commitment[]
+
+  @@unique([externalId, calendarId])
+  @@index([userId])
+  @@index([externalId])
+  @@index([startAt])
+  @@index([userId, startAt])
+}
+
+model Commitment {
+  id              String           @id @default(uuid())
+  userId          String
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title           String
+  description     String?          @db.Text
+  status          CommitmentStatus @default(PENDING)
+  dueDate         DateTime?
+  completedAt     DateTime?
+  
+  // Fingerprint for deduplication — promoted from JSON metadata to a proper indexed column
+  fingerprint     String?         @unique
+
+  // JSON metadata to store AI reasoning details (confidence, extraction trigger, priority level)
+  metadata        Json?           
+  
+  // Optional associations to capture origins/connections
+  contactId       String?
+  contact         Contact?         @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  
+  emailThreadId   String?
+  emailThread     EmailThread?     @relation(fields: [emailThreadId], references: [id], onDelete: SetNull)
+  
+  emailMessageId  String?
+  emailMessage    EmailMessage?    @relation(fields: [emailMessageId], references: [id], onDelete: SetNull)
+  
+  calendarEventId String?
+  calendarEvent   CalendarEvent?   @relation(fields: [calendarEventId], references: [id], onDelete: SetNull)
+
+  riskScore       Int              @default(0)
+  riskLevel       String           @default("LOW")
+  riskReason      String?          @db.Text
+
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@index([dueDate])
+  @@index([contactId])
+  @@index([emailThreadId])
+  @@index([emailMessageId])
+  @@index([calendarEventId])
+}
