@@ -38,15 +38,32 @@ export async function GET(
       return NextResponse.json({ error: "Contact not found" }, { status: 404 });
     }
 
-    // 3. Fetch Commitments for this contact
-    const commitments = await prisma.commitment.findMany({
-      where: { contactId: id, userId: user.id },
-      include: { emailMessage: true },
-      orderBy: [
-        { status: "asc" }, // pending first
-        { dueDate: "asc" },
-      ],
-    });
+    // 3 & 4. Fetch Commitments and Email Threads concurrently
+    const [commitments, threads] = await Promise.all([
+      prisma.commitment.findMany({
+        where: { contactId: id, userId: user.id },
+        include: { emailMessage: true },
+        orderBy: [
+          { status: "asc" }, // pending first
+          { dueDate: "asc" },
+        ],
+      }),
+      prisma.emailThread.findMany({
+        where: {
+          userId: user.id,
+          messages: {
+            some: {
+              OR: [
+                { sender: { contains: contact.email } },
+                { recipients: { has: contact.email } },
+              ],
+            },
+          },
+        },
+        orderBy: { lastMessageAt: "desc" },
+        take: 10,
+      })
+    ]);
 
     // Format commitments to CommitmentDTO objects
     const formattedCommitments: CommitmentDTO[] = commitments.map((c) => {
@@ -81,23 +98,6 @@ export async function GET(
       };
     });
 
-    // 4. Fetch associated Email Threads involving this contact's email
-    const threads = await prisma.emailThread.findMany({
-      where: {
-        userId: user.id,
-        messages: {
-          some: {
-            OR: [
-              { sender: { contains: contact.email } },
-              { recipients: { has: contact.email } },
-            ],
-          },
-        },
-      },
-      orderBy: { lastMessageAt: "desc" },
-      take: 10,
-    });
-
     const formattedThreads: ThreadSummary[] = threads.map((t) => ({
       id: t.id,
       subject: t.subject,
@@ -130,7 +130,7 @@ export async function GET(
     };
 
     return NextResponse.json(detailDTO);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Failed to fetch contact details:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }

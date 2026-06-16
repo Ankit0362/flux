@@ -1,6 +1,6 @@
-import { prisma } from "../lib/db";
-import { persistCommitments, generateFingerprint, normalizeTitle } from "./commitmentPersistence";
-import { ExtractedCommitment } from "./commitmentExtraction";
+import { prisma } from "../src/lib/db";
+import { persistCommitments } from "../src/services/commitmentPersistence";
+import { ExtractedCommitment } from "../src/services/commitmentExtraction";
 import { EmailDirection } from "@prisma/client";
 
 async function main() {

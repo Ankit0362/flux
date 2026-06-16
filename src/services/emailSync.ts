@@ -65,6 +65,8 @@ export async function persistThreadDetails(
       },
     });
 
+    let hasNewInboundMessage = false;
+
     // 2. Process all messages in the thread
     for (const msg of messages) {
       if (!msg.id) continue;
@@ -109,6 +111,7 @@ export async function persistThreadDetails(
       const bodies = extractBodies(msg.payload || {});
       const direction =
         senderEmail.toLowerCase() === userEmail.toLowerCase() ? "OUTBOUND" : "INBOUND";
+      if (direction === "INBOUND") hasNewInboundMessage = true;
 
       const dateRaw = getHeader(msgHeaders, "Date");
       let receivedAt = new Date();
@@ -137,6 +140,19 @@ export async function persistThreadDetails(
           body: bodies.text || msg.snippet || "",
           bodyHtml: bodies.html || null,
         },
+      });
+    }
+
+    const metadata =
+      dbThread.metadata && typeof dbThread.metadata === "object" && !Array.isArray(dbThread.metadata)
+        ? { ...(dbThread.metadata as Record<string, unknown>) }
+        : {};
+    const snooze = metadata.chiefosSnooze as { mode?: string } | undefined;
+    if (hasNewInboundMessage && snooze?.mode === "until_reply") {
+      delete metadata.chiefosSnooze;
+      await tx.emailThread.update({
+        where: { id: dbThread.id },
+        data: { metadata },
       });
     }
   });
@@ -190,14 +206,17 @@ export async function bootstrapSync(
   // the next webhook-triggered sync can use it as the starting cursor instead
   // of triggering another full bootstrap.
   try {
-    const profile = await tenantClient.gmail.api.users.getProfile({ userId: "me" });
-    if (profile?.historyId) {
+    // Corsair gmail plugin doesn't expose users.getProfile by default.
+    // However, threadsResult contains the threads, and the first thread's historyId
+    // represents a recent history state we can anchor to.
+    const latestThread = threadsResult.threads?.[0];
+    if (latestThread?.historyId) {
       await prisma.user.update({
         where: { id: userId },
-        data: { gmailHistoryId: profile.historyId },
+        data: { gmailHistoryId: latestThread.historyId },
       });
       console.log(
-        `[GmailSync] Anchored gmailHistoryId=${profile.historyId} for user ${userId}`
+        `[GmailSync] Anchored gmailHistoryId=${latestThread.historyId} for user ${userId}`
       );
     }
   } catch (err) {

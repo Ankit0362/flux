@@ -131,7 +131,8 @@ export async function persistCalendarEvent(
 }
 
 /**
- * Bootstrap sync: fetches upcoming and recent events from Google Calendar
+ * Bootstrap sync: fetches upcoming and recent events from Google Calendar.
+ * After a successful run, saves the current timestamp as the incremental sync cursor.
  */
 export async function bootstrapCalendarSync(
   userId: string,
@@ -142,18 +143,19 @@ export async function bootstrapCalendarSync(
 
   let synced = 0;
   let errors = 0;
-  
+
   // Fetch from 14 days ago to 30 days in the future
   const now = new Date();
+  const syncStartedAt = now.toISOString();
   const timeMin = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000).toISOString();
   const timeMax = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString();
 
   let pageToken: string | undefined = undefined;
-  let nextSyncToken: string | undefined = undefined;
+  let hadError = false;
 
   do {
     try {
-      const response: any = await tenantClient.googlecalendar.api.events.list({
+      const response: any = await tenantClient.googlecalendar.api.events.getMany({
         calendarId: "primary",
         timeMin,
         timeMax,
@@ -177,23 +179,20 @@ export async function bootstrapCalendarSync(
       }
 
       pageToken = response.nextPageToken;
-      
-      // Keep track of the sync token to allow incremental syncs later
-      if (response.nextSyncToken) {
-        nextSyncToken = response.nextSyncToken;
-      }
     } catch (err) {
       console.error("Failed to fetch events from Google Calendar API:", err);
       errors++;
+      hadError = true;
       break;
     }
   } while (pageToken);
 
-  // Save the sync token
-  if (nextSyncToken) {
+  // Save the sync cursor timestamp so future incremental syncs only fetch
+  // events modified after this point (via updatedMin).
+  if (!hadError) {
     await prisma.user.update({
       where: { id: userId },
-      data: { calendarSyncToken: nextSyncToken },
+      data: { calendarSyncToken: syncStartedAt },
     });
   }
 
@@ -202,48 +201,57 @@ export async function bootstrapCalendarSync(
 }
 
 /**
- * Incremental sync: fetches only events that have changed since the last sync
+ * Incremental sync: fetches only events modified since the last successful sync.
+ * Uses updatedMin (ISO timestamp cursor stored in calendarSyncToken) to fetch
+ * only changed events, avoiding a full re-fetch on every webhook trigger.
  */
 export async function incrementalCalendarSync(
   userId: string,
   email: string
 ): Promise<{ synced: number; errors: number }> {
   console.log(`Starting incremental calendar sync for user ${userId} (${email})...`);
-  
+
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { calendarSyncToken: true }
+    select: { calendarSyncToken: true },
   });
-  
+
   if (!user || !user.calendarSyncToken) {
-    console.log("No sync token found, falling back to bootstrap sync...");
+    console.log("No sync cursor found, falling back to bootstrap sync...");
     return bootstrapCalendarSync(userId, email);
   }
-  
+
   const tenantClient = corsair.withTenant(userId) as any;
   let synced = 0;
   let errors = 0;
   let pageToken: string | undefined = undefined;
-  let nextSyncToken: string | undefined = undefined;
+
+  // Record the timestamp before fetching so we don't miss events that change
+  // during the sync window.
+  const syncStartedAt = new Date().toISOString();
+
+  // updatedMin filters to events modified after our last sync cursor.
+  const updatedMin = user.calendarSyncToken;
 
   try {
     do {
-      const response: any = await tenantClient.googlecalendar.api.events.list({
+      const response: any = await tenantClient.googlecalendar.api.events.getMany({
         calendarId: "primary",
-        syncToken: user.calendarSyncToken,
+        updatedMin,
+        showDeleted: true, // Include cancelled events so we can mark them locally
         pageToken,
       });
 
       const events = response.items || [];
-      console.log(`Fetched ${events.length} changed events from Google Calendar...`);
+      console.log(`Fetched ${events.length} changed events from Google Calendar (since ${updatedMin})...`);
 
       for (const event of events) {
         try {
           if (event.status === "cancelled") {
-            // Update local to cancelled if it exists
+            // Mark locally as CANCELLED if the event exists
             await prisma.calendarEvent.updateMany({
               where: { externalId: event.id, calendarId: "primary", userId },
-              data: { status: EventStatus.CANCELLED }
+              data: { status: EventStatus.CANCELLED },
             });
           } else {
             await persistCalendarEvent(userId, email, event);
@@ -256,30 +264,16 @@ export async function incrementalCalendarSync(
       }
 
       pageToken = response.nextPageToken;
-      if (response.nextSyncToken) {
-        nextSyncToken = response.nextSyncToken;
-      }
     } while (pageToken);
 
-    if (nextSyncToken) {
-      await prisma.user.update({
-        where: { id: userId },
-        data: { calendarSyncToken: nextSyncToken },
-      });
-    }
-  } catch (err: any) {
-    // 410 Gone means the sync token has expired
-    if (err.status === 410 || err.code === 410) {
-      console.log("Sync token expired, falling back to bootstrap sync...");
-      // Clear the invalid token
-      await prisma.user.update({
-        where: { id: userId },
-        data: { calendarSyncToken: null },
-      });
-      return bootstrapCalendarSync(userId, email);
-    }
-    
-    console.error("Failed incremental sync:", err);
+    // Advance the sync cursor to the start of this run so the next incremental
+    // sync only fetches events modified after now.
+    await prisma.user.update({
+      where: { id: userId },
+      data: { calendarSyncToken: syncStartedAt },
+    });
+  } catch (err: unknown) {
+    console.error("Failed incremental calendar sync:", err);
     errors++;
   }
 
@@ -321,10 +315,10 @@ export async function createCalendarEvent(
   }
 
   // Write to Google Calendar
-  const response = await tenantClient.googlecalendar.api.events.insert({
+  const response = await tenantClient.googlecalendar.api.events.create({
     calendarId: "primary",
     sendUpdates: "all", // Notify attendees
-    requestBody
+    event: requestBody
   });
   
   // Persist locally
@@ -375,11 +369,11 @@ export async function updateCalendarEvent(
     requestBody.attendees = payload.attendees.map(email => ({ email }));
   }
 
-  const response = await tenantClient.googlecalendar.api.events.patch({
+  const response = await tenantClient.googlecalendar.api.events.update({
+    id: dbEvent.externalId,
     calendarId: "primary",
-    eventId: dbEvent.externalId,
     sendUpdates: "all",
-    requestBody
+    event: requestBody
   });
 
   await persistCalendarEvent(userId, userEmail, response);
@@ -400,13 +394,14 @@ export async function deleteCalendarEvent(userId: string, eventId: string) {
 
   try {
     await tenantClient.googlecalendar.api.events.delete({
+      id: dbEvent.externalId,
       calendarId: "primary",
-      eventId: dbEvent.externalId,
       sendUpdates: "all"
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     // If already deleted on Google Calendar, ignore the error and proceed to delete locally
-    if (err.status !== 410 && err.status !== 404) {
+    const error = err as any;
+    if (error.status !== 410 && error.status !== 404) {
       throw err;
     }
   }

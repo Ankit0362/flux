@@ -29,7 +29,6 @@ export async function GET(
 
     return NextResponse.json({ event });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Internal server error";
     console.error("Failed to fetch calendar event:", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
@@ -52,7 +51,6 @@ export async function PATCH(
 
     return NextResponse.json({ event: updatedEvent });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Internal server error";
     console.error("Failed to update calendar event:", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
@@ -73,7 +71,6 @@ export async function DELETE(
     await deleteCalendarEvent(user.id, id);
     return NextResponse.json({ success: true });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Internal server error";
     console.error("Failed to delete calendar event:", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }

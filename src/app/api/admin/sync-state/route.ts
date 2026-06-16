@@ -40,10 +40,10 @@ export async function GET(request: NextRequest) {
       tenantId = user.id;
       
       try {
-        // Attempt to call getProfile through Corsair to verify connection validity
+        // Attempt to call labels.list through Corsair to verify connection validity
         const tenantClient = corsair.withTenant(user.id) as any;
-        const profile = await tenantClient.gmail.api.users.getProfile({ userId: "me" });
-        if (profile && profile.emailAddress) {
+        const labelsResult = await tenantClient.gmail.api.labels.list({ userId: "me" });
+        if (labelsResult && labelsResult.labels) {
           isConnected = true;
         }
       } catch (err) {

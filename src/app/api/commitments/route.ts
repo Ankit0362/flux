@@ -4,6 +4,7 @@ import { CommitmentStatus } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { CommitmentDTO } from "@/types/commitments";
 import { updateUserCommitmentsRisk, parseCommitmentMetadata } from "@/services/commitmentRisk";
+import { shouldThrottle } from "@/lib/throttle";
 
 export async function GET(request: NextRequest) {
   try {
@@ -37,8 +38,12 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // 3. Recalculate risk scores dynamically for this user
-    await updateUserCommitmentsRisk(user.id);
+    // 3. Recalculate risk scores (throttled to once per 5 min, non-blocking)
+    if (!shouldThrottle(`commitmentRisk:${user.id}`, 5 * 60 * 1000)) {
+      updateUserCommitmentsRisk(user.id).catch((err) =>
+        console.error("Background commitment risk update failed:", err)
+      );
+    }
 
     // 4. Query commitments for this user (excluding NO_COMMITMENTS sentinel records)
     const commitments = await prisma.commitment.findMany({

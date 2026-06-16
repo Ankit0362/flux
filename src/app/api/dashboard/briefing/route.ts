@@ -7,6 +7,7 @@ import { updateUserCommitmentsRisk, parseCommitmentMetadata } from "@/services/c
 import { updateUserRelationships } from "@/services/relationshipIntelligence";
 import { isDemoMode } from "@/services/demoMode";
 import { demoStore } from "@/services/demoData";
+import { shouldThrottle } from "@/lib/throttle";
 
 export async function GET(request: NextRequest) {
   try {
@@ -21,36 +22,48 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // 2. Fetch unread email threads count
-    const unreadEmailCount = await prisma.emailThread.count({
-      where: {
-        userId: user.id,
-        labels: { has: "UNREAD" },
-      },
-    });
+    const now = new Date();
+    const weekEnd = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
-    // 3. Recalculate risk scores and relationship intelligence in PARALLEL
-    // (was sequential — this saves ~50% of dashboard cold-load time)
-    await Promise.all([
-      updateUserCommitmentsRisk(user.id),
-      updateUserRelationships(user.id),
+    // 2. Fetch all dashboard data concurrently
+    const [unreadEmailCount, commitments, upcomingEvents, allContacts] = await Promise.all([
+      prisma.emailThread.count({
+        where: { userId: user.id, labels: { has: "UNREAD" } },
+      }),
+      prisma.commitment.findMany({
+        where: { userId: user.id, title: { not: "NO_COMMITMENTS" } },
+        include: { emailMessage: true },
+        orderBy: { createdAt: "desc" },
+      }),
+      prisma.calendarEvent.findMany({
+        where: {
+          userId: user.id,
+          startAt: { gte: now, lte: weekEnd },
+          status: { not: "CANCELLED" }
+        },
+        include: { attendees: true },
+        orderBy: { startAt: "asc" }
+      }),
+      prisma.contact.findMany({
+        where: { userId: user.id },
+        orderBy: { relationshipScore: "desc" },
+      })
     ]);
 
-    // 4. Fetch all commitments for the user (excluding sentinels)
-    const commitments = await prisma.commitment.findMany({
-      where: {
-        userId: user.id,
-        title: { not: "NO_COMMITMENTS" },
-      },
-      include: {
-        emailMessage: true,
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
+    // 3. Recalculate risk scores and relationship intelligence (throttled to once per 5 min)
+    const TTL = 5 * 60 * 1000; // 5 minutes
+    if (!shouldThrottle(`commitmentRisk:${user.id}`, TTL)) {
+      updateUserCommitmentsRisk(user.id).catch((err) =>
+        console.error("Background commitment risk update failed:", err)
+      );
+    }
+    if (!shouldThrottle(`relationships:${user.id}`, TTL)) {
+      updateUserRelationships(user.id).catch((err) =>
+        console.error("Background relationship update failed:", err)
+      );
+    }
 
-    // 5. Format commitments to CommitmentDTO objects
+    // 4. Format commitments to CommitmentDTO objects
     const formattedCommitments: CommitmentDTO[] = commitments.map((c) => {
       const metadata = parseCommitmentMetadata(c.metadata);
       const confidence = typeof metadata.confidence === "number" ? metadata.confidence : 0.0;
@@ -63,7 +76,6 @@ export async function GET(request: NextRequest) {
             sender: c.emailMessage.sender,
             recipients: c.emailMessage.recipients,
             subject: c.emailMessage.subject,
-            // PERF-03: Only return a snippet, not the full 100KB email body
             body: c.emailMessage.body.substring(0, 200),
             receivedAt: c.emailMessage.receivedAt.toISOString(),
           }
@@ -89,20 +101,16 @@ export async function GET(request: NextRequest) {
     const completed = formattedCommitments.filter((c) => c.status === CommitmentStatus.COMPLETED);
     const snoozed = formattedCommitments.filter((c) => c.status === CommitmentStatus.SNOOZED);
 
-    const now = new Date();
     const overdue = pending.filter((c) => c.dueDate && new Date(c.dueDate) < now);
 
     // 6. Generate lists
-    // Recent commitments: 5 latest created
     const recentCommitments = formattedCommitments.slice(0, 5);
 
-    // High confidence commitments: confidence >= 0.8, sorted by confidence desc, max 5
     const highConfidenceCommitments = formattedCommitments
       .filter((c) => c.confidence >= 0.8)
       .sort((a, b) => b.confidence - a.confidence)
       .slice(0, 5);
 
-    // Upcoming deadlines: pending commitments with due date in the future, sorted by due date asc, max 5
     const upcomingDeadlines = pending
       .filter((c) => c.dueDate && new Date(c.dueDate) >= now)
       .sort((a, b) => new Date(a.dueDate!).getTime() - new Date(b.dueDate!).getTime())
@@ -111,17 +119,6 @@ export async function GET(request: NextRequest) {
     // 6.5. Fetch Calendar Stats
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
-    const weekEnd = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-
-    const upcomingEvents = await prisma.calendarEvent.findMany({
-      where: {
-        userId: user.id,
-        startAt: { gte: now, lte: weekEnd },
-        status: { not: "CANCELLED" }
-      },
-      include: { attendees: true },
-      orderBy: { startAt: "asc" }
-    });
 
     const todayEvents = upcomingEvents.filter(e => e.startAt >= todayStart && e.startAt < todayEnd);
     const nextEvent = upcomingEvents.length > 0 ? {
@@ -130,7 +127,6 @@ export async function GET(request: NextRequest) {
       attendeeCount: upcomingEvents[0].attendees.length
     } : null;
 
-    // A simple conflict count (events starting within the same hour)
     let conflictCount = 0;
     for (let i = 0; i < upcomingEvents.length - 1; i++) {
       if (upcomingEvents[i].endAt > upcomingEvents[i+1].startAt) {
@@ -146,10 +142,7 @@ export async function GET(request: NextRequest) {
     };
 
     // 7. Fetch relationship intelligence data
-    const allContacts = await prisma.contact.findMany({
-      where: { userId: user.id },
-      orderBy: { relationshipScore: "desc" },
-    });
+
 
     const strongCount = allContacts.filter((c) => c.relationshipHealth === "Strong").length;
     const neutralCount = allContacts.filter((c) => c.relationshipHealth === "Neutral").length;

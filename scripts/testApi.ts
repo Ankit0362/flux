@@ -1,6 +1,6 @@
-import { prisma } from "../lib/db";
-import { GET } from "../app/api/commitments/route";
-import { PATCH } from "../app/api/commitments/[id]/route";
+import { prisma } from "../src/lib/db";
+import { GET } from "../src/app/api/commitments/route";
+import { PATCH } from "../src/app/api/commitments/[id]/route";
 import { NextRequest } from "next/server";
 import { CommitmentStatus, EmailDirection } from "@prisma/client";
 
@@ -11,7 +11,7 @@ async function runTests() {
 
   let testUser: any = null;
   let testMsg: any = null;
-  let createdCommitmentIds: string[] = [];
+  const createdCommitmentIds: string[] = [];
 
   try {
     // 1. Setup Test User and Email Message

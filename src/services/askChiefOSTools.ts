@@ -8,8 +8,9 @@
 
 import { prisma } from "../lib/db";
 import { corsair } from "../lib/corsair";
-import { generateMeetingPrep, getUpcomingAgenda } from "./calendarEventIntelligence";
+import { generateMeetingPrep, getUpcomingAgenda, detectConflicts } from "./calendarEventIntelligence";
 import { createCalendarEvent } from "./calendarSync";
+import { suggestAvailabilitySlots } from "./availability";
 
 // ─── Tool Return Types ───────────────────────────────────────────────────────
 
@@ -250,6 +251,21 @@ export async function create_calendar_event_tool(
   return createCalendarEvent(userId, user.email, args);
 }
 
+export async function get_availability(
+  userId: string,
+  args: { window?: string; durationMinutes?: number; limit?: number }
+) {
+  return suggestAvailabilitySlots(userId, args);
+}
+
+/**
+ * Detects overlapping calendar events within the next 7 days.
+ * Returns pairs of conflicting events with their time blocks.
+ */
+export async function detect_calendar_conflicts(userId: string) {
+  return detectConflicts(userId);
+}
+
 /**
  * Sends an email on behalf of the user via the Corsair Gmail API.
  * The LLM provides the recipient, subject, and body.
@@ -285,6 +301,91 @@ export async function send_email(
   const result = await client.gmail.api.messages.send({ raw });
 
   return { success: true, messageId: result?.id };
+}
+
+export interface ActionReceipt {
+  type: "event_created" | "email_sent" | "commitment_updated";
+  id?: string;
+  detail: string;
+}
+
+export async function update_commitment(
+  userId: string,
+  args: { commitmentId: string; status: "COMPLETED" | "SNOOZED" | "CANCELLED" }
+): Promise<{ success: boolean; receipt: ActionReceipt }> {
+  const { commitmentId, status } = args;
+  await prisma.commitment.updateMany({
+    where: { id: commitmentId, userId },
+    data: {
+      status,
+      completedAt: status === "COMPLETED" ? new Date() : undefined,
+    },
+  });
+  return {
+    success: true,
+    receipt: {
+      type: "commitment_updated",
+      id: commitmentId,
+      detail: `Commitment marked as ${status}`,
+    },
+  };
+}
+
+export async function execute_negotiation(
+  userId: string,
+  args: {
+    threadId: string;
+    selectedSlot: { startAt: string; endAt: string };
+    title: string;
+    attendees: string[];
+    replyBody: string;
+    commitmentId?: string;
+  }
+): Promise<{ success: boolean; receipts: ActionReceipt[] }> {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) throw new Error("User not found");
+
+  const receipts: ActionReceipt[] = [];
+
+  // 1. Create calendar event
+  const event = await createCalendarEvent(userId, user.email, {
+    title: args.title,
+    startAt: args.selectedSlot.startAt,
+    endAt: args.selectedSlot.endAt,
+    attendees: args.attendees,
+    description: `Scheduled via ChiefOS from thread ${args.threadId}`,
+  });
+  receipts.push({ type: "event_created", id: event?.id, detail: `Event '${args.title}' created` });
+
+  // 2. Send reply email
+  const thread = await prisma.emailThread.findFirst({
+    where: { id: args.threadId, userId },
+    select: { externalId: true, subject: true },
+  });
+  if (thread) {
+    const subject = thread.subject.startsWith("Re:") ? thread.subject : `Re: ${thread.subject}`;
+    const mime = [
+      `From: ${user.email}`,
+      `To: ${args.attendees.join(", ")}`,
+      `Subject: ${subject}`,
+      "MIME-Version: 1.0",
+      "Content-Type: text/plain; charset=UTF-8",
+      "",
+      args.replyBody,
+    ].join("\r\n");
+    const raw = Buffer.from(mime).toString("base64url");
+    const client = corsair.withTenant(userId) as any;
+    const sent = await client.gmail.api.messages.send({ raw, threadId: thread.externalId });
+    receipts.push({ type: "email_sent", id: sent?.id, detail: `Reply sent to ${args.attendees.join(", ")}` });
+  }
+
+  // 3. Optionally update a commitment
+  if (args.commitmentId) {
+    const result = await update_commitment(userId, { commitmentId: args.commitmentId, status: "COMPLETED" });
+    receipts.push(result.receipt);
+  }
+
+  return { success: true, receipts };
 }
 
 // ─── Gemini Function Declarations ────────────────────────────────────────────
@@ -416,6 +517,37 @@ export const CHIEFOS_TOOL_DECLARATIONS = [
     },
   },
   {
+    name: "get_availability",
+    description:
+      "Finds open calendar slots for scheduling. Use before proposing meeting times, especially when the user asks to schedule something next week or asks if they are free.",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        window: {
+          type: "STRING",
+          description: "Natural time window such as 'next week', 'tomorrow', or 'this week'.",
+        },
+        durationMinutes: {
+          type: "INTEGER",
+          description: "Meeting duration in minutes. Default is 30.",
+        },
+        limit: {
+          type: "INTEGER",
+          description: "Number of slots to return. Default is 3.",
+        },
+      },
+    },
+  },
+  {
+    name: "detect_calendar_conflicts",
+    description:
+      "Detects scheduling conflicts in the user's calendar — overlapping events within the next 7 days. Use when the user asks 'Do I have any conflicts?', 'Is my schedule clean this week?', or 'Are there any double-bookings?'.",
+    parameters: {
+      type: "OBJECT",
+      properties: {},
+    },
+  },
+  {
     name: "send_email",
     description:
       "Sends an email on behalf of the user. Use ONLY when the user explicitly asks to send, write, or draft-and-send an email. Always confirm recipient, subject, and body before calling. Never fabricate email addresses — only use emails already retrieved from other tool results.",
@@ -438,11 +570,95 @@ export const CHIEFOS_TOOL_DECLARATIONS = [
       required: ["to", "subject", "body"],
     },
   },
+  {
+    name: "update_commitment",
+    description:
+      "Marks an existing commitment as COMPLETED, SNOOZED, or CANCELLED. Use when the user says they finished a task, want to snooze a commitment, or cancel it.",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        commitmentId: {
+          type: "STRING",
+          description: "The ID of the commitment to update. Must come from a prior get_commitments call.",
+        },
+        status: {
+          type: "STRING",
+          enum: ["COMPLETED", "SNOOZED", "CANCELLED"],
+          description: "The new status for the commitment.",
+        },
+      },
+      required: ["commitmentId", "status"],
+    },
+  },
+  {
+    name: "execute_negotiation",
+    description:
+      "Compound action: creates a calendar event, sends a reply email, and optionally completes a commitment — all in one step. Use when the user wants to confirm a meeting from a negotiation thread.",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        threadId: { type: "STRING", description: "The email thread ID the negotiation originated from." },
+        selectedSlot: {
+          type: "OBJECT",
+          properties: {
+            startAt: { type: "STRING", description: "ISO 8601 start time for the meeting." },
+            endAt: { type: "STRING", description: "ISO 8601 end time for the meeting." },
+          },
+          required: ["startAt", "endAt"],
+        },
+        title: { type: "STRING", description: "Title of the calendar event to create." },
+        attendees: { type: "ARRAY", items: { type: "STRING" }, description: "List of attendee email addresses." },
+        replyBody: { type: "STRING", description: "The reply email body confirming the meeting." },
+        commitmentId: { type: "STRING", description: "Optional: ID of a commitment to mark as COMPLETED after scheduling." },
+      },
+      required: ["threadId", "selectedSlot", "title", "attendees", "replyBody"],
+    },
+  },
+  {
+    name: "reply_to_thread",
+    description: "Replies to an existing email thread.",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        threadId: { type: "STRING", description: "The ID of the thread to reply to." },
+        to: { type: "ARRAY", items: { type: "STRING" }, description: "List of recipient email addresses." },
+        body: { type: "STRING", description: "The reply message body." },
+      },
+      required: ["threadId", "to", "body"],
+    },
+  },
+  {
+    name: "reschedule_calendar_event",
+    description: "Reschedules an existing calendar event to a new time.",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        eventId: { type: "STRING", description: "The ID of the event to reschedule." },
+        startAt: { type: "STRING", description: "The new start time in ISO 8601 format." },
+        endAt: { type: "STRING", description: "The new end time in ISO 8601 format." },
+      },
+      required: ["eventId", "startAt", "endAt"],
+    },
+  },
+  {
+    name: "create_commitment",
+    description: "Creates a new commitment or task for the user.",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        title: { type: "STRING", description: "A short, descriptive title of the commitment." },
+        dueDate: { type: "STRING", description: "Optional due date in ISO 8601 format." },
+        contactEmail: { type: "STRING", description: "Optional email of the contact this commitment is related to." },
+      },
+      required: ["title"],
+    },
+  },
 ] as const;
 
 // ─── Tool Dispatcher ─────────────────────────────────────────────────────────
 
-type ToolName = "get_commitments" | "get_relationships" | "get_follow_ups" | "get_daily_focus" | "get_calendar_events" | "get_meeting_prep" | "create_calendar_event" | "send_email";
+type ToolName = "get_commitments" | "get_relationships" | "get_follow_ups" | "get_daily_focus" | "get_calendar_events" | "get_meeting_prep" | "create_calendar_event" | "get_availability" | "detect_calendar_conflicts" | "send_email" | "update_commitment" | "execute_negotiation";
+
 
 /**
  * Dispatcher: routes the tool call to the appropriate function.
@@ -538,6 +754,20 @@ export async function dispatchTool(
           pendingCount,
         };
       }
+      case "get_availability": {
+        const now = new Date();
+        return [1, 2, 3].map((i) => {
+          const start = new Date(now);
+          start.setDate(now.getDate() + i);
+          start.setHours(10 + i, 0, 0, 0);
+          const end = new Date(start.getTime() + 30 * 60_000);
+          return {
+            startAt: start.toISOString(),
+            endAt: end.toISOString(),
+            label: start.toLocaleString([], { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }),
+          };
+        });
+      }
       default:
         throw new Error(`Unknown tool: ${toolName}`);
     }
@@ -558,8 +788,16 @@ export async function dispatchTool(
       return get_meeting_prep(userId, toolArgs as any);
     case "create_calendar_event":
       return create_calendar_event_tool(userId, toolArgs as any);
+    case "get_availability":
+      return get_availability(userId, toolArgs as any);
+    case "detect_calendar_conflicts":
+      return detect_calendar_conflicts(userId);
     case "send_email":
       return send_email(userId, toolArgs as Parameters<typeof send_email>[1]);
+    case "update_commitment":
+      return update_commitment(userId, toolArgs as Parameters<typeof update_commitment>[1]);
+    case "execute_negotiation":
+      return execute_negotiation(userId, toolArgs as Parameters<typeof execute_negotiation>[1]);
     default:
       throw new Error(`Unknown tool: ${toolName}`);
   }

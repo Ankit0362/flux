@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(`${origin}/inbox?error=tenant_mismatch`);
     }
 
-    console.log(`OAuth successful. Connected ${plugin} for tenant ${userId}.`);
+    console.info(`OAuth successful. Connected ${plugin} for tenant ${userId}.`);
 
     // Verify user exists
     const user = await prisma.user.findUnique({

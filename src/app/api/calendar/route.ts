@@ -50,7 +50,6 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ events });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Internal server error";
     console.error("Failed to fetch calendar events:", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
@@ -73,6 +72,62 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const payloadStart = new Date(payload.startAt);
+    const payloadEnd = new Date(payload.endAt);
+
+    // Intercept if in Demo Mode
+    const { isDemoMode } = await import("@/services/demoMode");
+    if (await isDemoMode()) {
+      // Check for overlapping events
+      const overlappingEvent = await prisma.calendarEvent.findFirst({
+        where: {
+          userId: user.id,
+          status: { not: EventStatus.CANCELLED },
+          startAt: { lt: payloadEnd },
+          endAt: { gt: payloadStart }
+        }
+      });
+
+      if (overlappingEvent) {
+        return NextResponse.json(
+          { error: "Time slot is already booked by another meeting." },
+          { status: 409 }
+        );
+      }
+
+      // Mock creating an event
+      const newEvent = await prisma.calendarEvent.create({
+        data: {
+          userId: user.id,
+          title: payload.title,
+          description: payload.description,
+          startAt: payloadStart,
+          endAt: payloadEnd,
+          externalId: `demo-event-${Date.now()}`,
+          calendarId: "primary",
+          status: "CONFIRMED"
+        }
+      });
+      return NextResponse.json({ event: newEvent }, { status: 201 });
+    }
+
+    // Check for overlapping events
+    const overlappingEvent = await prisma.calendarEvent.findFirst({
+      where: {
+        userId: user.id,
+        status: { not: EventStatus.CANCELLED },
+        startAt: { lt: payloadEnd },
+        endAt: { gt: payloadStart }
+      }
+    });
+
+    if (overlappingEvent) {
+      return NextResponse.json(
+        { error: "Time slot is already booked by another meeting." },
+        { status: 409 }
+      );
+    }
+
     const createdEvent = await createCalendarEvent(user.id, user.email, {
       title: payload.title,
       startAt: payload.startAt,
@@ -84,7 +139,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ event: createdEvent }, { status: 201 });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Internal server error";
     console.error("Failed to create calendar event:", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }

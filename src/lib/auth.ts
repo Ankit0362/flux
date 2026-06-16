@@ -53,7 +53,6 @@ export const authOptions: NextAuthOptions = {
     },
   },
   pages: {
-    // We can define a custom sign-in page later, using default for now
-    // signIn: '/login',
+    signIn: '/login',
   },
 };

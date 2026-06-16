@@ -1,6 +1,4 @@
-import { ContactListDTO, ContactDetailDTO, ThreadSummary, ContactInsightDTO } from "@/types/contacts";
-import { CommitmentDTO } from "@/types/commitments";
-import { ExecutiveBriefingDTO } from "@/types/briefing";
+import { ContactInsightDTO } from "@/types/contacts";
 import { CommitmentStatus } from "@prisma/client";
 
 // MOCK CONSTANTS

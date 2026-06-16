@@ -118,6 +118,34 @@ const WRITE_ACTION_META: Record<string, { icon: string; label: string; confirmLa
     color: "text-emerald-400",
     border: "border-emerald-900/40 bg-emerald-950/20",
   },
+  reschedule_calendar_event: {
+    icon: "M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z",
+    label: "📅 Reschedule Event",
+    confirmLabel: "Reschedule ↗",
+    color: "text-amber-400",
+    border: "border-amber-900/40 bg-amber-950/20",
+  },
+  create_commitment: {
+    icon: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2",
+    label: "📝 Create Commitment",
+    confirmLabel: "Create Task ↗",
+    color: "text-pink-400",
+    border: "border-pink-900/40 bg-pink-950/20",
+  },
+  update_commitment: {
+    icon: "M5 13l4 4L19 7",
+    label: "✅ Update Commitment",
+    confirmLabel: "Update ↗",
+    color: "text-emerald-400",
+    border: "border-emerald-900/40 bg-emerald-950/20",
+  },
+  execute_negotiation: {
+    icon: "M13 10V3L4 14h7v7l9-11h-7z",
+    label: "⚡ Execute Negotiation",
+    confirmLabel: "Schedule & Reply ↗",
+    color: "text-amber-500",
+    border: "border-amber-900/40 bg-amber-950/20",
+  },
 };
 
 function WriteConfirmModal({
@@ -151,8 +179,8 @@ function WriteConfirmModal({
     } else if (action.actionType === "reply_to_thread") {
       const rp = p as ReplyPayload;
       onConfirm({ kind: "reply_to_thread", threadId: rp.threadId, to: to.split(",").map(e => e.trim()).filter(Boolean), body });
-    } else if (action.actionType === "create_calendar_event") {
-      onConfirm(p as CreateEventPayload);
+    } else if (action.actionType === "create_calendar_event" || action.actionType === "reschedule_calendar_event" || action.actionType === "create_commitment" || action.actionType === "update_commitment" || action.actionType === "execute_negotiation") {
+      onConfirm(p);
     }
   };
 
@@ -210,12 +238,56 @@ function WriteConfirmModal({
             <div><span className="text-slate-500 font-bold">Event: </span>{ep.title}</div>
             <div><span className="text-slate-500 font-bold">Start: </span>{fmt(start)}</div>
             <div><span className="text-slate-500 font-bold">End: </span>{fmt(end)}</div>
-            {ep.attendees.length > 0 && (
+            {ep.attendees?.length > 0 && (
               <div><span className="text-slate-500 font-bold">Attendees: </span>{ep.attendees.join(", ")}</div>
             )}
             {ep.description && (
               <div><span className="text-slate-500 font-bold">Notes: </span>{ep.description}</div>
             )}
+          </div>
+        );
+      })()}
+
+      {/* reschedule_calendar_event preview */}
+      {action.actionType === "reschedule_calendar_event" && (() => {
+        const ep = p as any;
+        const start = new Date(ep.startAt);
+        const end = new Date(ep.endAt);
+        const fmt = (d: Date) => d.toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
+        return (
+          <div className="space-y-1.5 text-[11px] text-slate-300">
+            <div><span className="text-slate-500 font-bold">New Start: </span>{fmt(start)}</div>
+            <div><span className="text-slate-500 font-bold">New End: </span>{fmt(end)}</div>
+          </div>
+        );
+      })()}
+
+      {/* create_commitment preview */}
+      {action.actionType === "create_commitment" && (() => {
+        const ep = p as any;
+        return (
+          <div className="space-y-1.5 text-[11px] text-slate-300">
+            <div><span className="text-slate-500 font-bold">Task: </span>{ep.title}</div>
+            {ep.dueDate && (
+              <div><span className="text-slate-500 font-bold">Due: </span>{new Date(ep.dueDate).toLocaleDateString()}</div>
+            )}
+            {ep.contactEmail && (
+              <div><span className="text-slate-500 font-bold">Contact: </span>{ep.contactEmail}</div>
+            )}
+          </div>
+        );
+      })()}
+      
+      {/* execute_negotiation preview */}
+      {action.actionType === "execute_negotiation" && (() => {
+        const ep = p as any;
+        const start = new Date(ep.selectedSlot?.startAt);
+        const fmt = (d: Date) => d.toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
+        return (
+          <div className="space-y-1.5 text-[11px] text-slate-300">
+            <div><span className="text-slate-500 font-bold">Event: </span>{ep.title}</div>
+            <div><span className="text-slate-500 font-bold">Time: </span>{fmt(start)}</div>
+            <div><span className="text-slate-500 font-bold">Reply: </span>"{ep.replyBody?.slice(0, 50)}..."</div>
           </div>
         );
       })()}

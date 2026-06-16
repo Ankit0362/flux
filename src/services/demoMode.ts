@@ -9,7 +9,7 @@ export async function isDemoMode(): Promise<boolean> {
     const cookieStore = await cookies();
     const mode = cookieStore.get("chiefos_mode")?.value;
     return mode === "demo";
-  } catch (e) {
+  } catch {
     // cookies() can throw in certain server contexts where headers aren't available
     return false;
   }

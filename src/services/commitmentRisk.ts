@@ -186,9 +186,13 @@ export async function updateUserCommitmentsRisk(userId: string): Promise<void> {
     }
   }
 
-  // Execute all risk updates in a single transaction
+  // Execute all risk updates in chunks without transaction to avoid timeouts
   if (riskUpdates.length > 0) {
-    await prisma.$transaction(riskUpdates);
+    const chunkSize = 10;
+    for (let i = 0; i < riskUpdates.length; i += chunkSize) {
+      const chunk = riskUpdates.slice(i, i + chunkSize);
+      await Promise.all(chunk);
+    }
   }
 
   // 3. Reset risk for any COMPLETED or SNOOZED commitments if they don't already match defaults

@@ -13,7 +13,7 @@ interface CommandItem {
   keywords: string[];
   action: (
     router: any,
-    setView: (view: "list" | "compose" | "meeting" | "sending" | "success") => void,
+    setView: (view: "list" | "compose" | "meeting" | "sending" | "success" | "availability") => void,
     closePalette: () => void
   ) => void;
 }
@@ -23,8 +23,10 @@ export default function CommandPalette() {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const [activeView, setActiveView] = useState<"list" | "compose" | "meeting" | "sending" | "success">("list");
+  const [activeView, setActiveView] = useState<"list" | "compose" | "meeting" | "sending" | "success" | "availability">("list");
   const [replyThreadId, setReplyThreadId] = useState<string | null>(null);
+  const [availabilitySlots, setAvailabilitySlots] = useState<Array<{ startAt: string; endAt: string; label: string }>>([]);
+  const [availabilityLoading, setAvailabilityLoading] = useState(false);
   
   // Action payloads
   const [emailTo, setEmailTo] = useState("");
@@ -146,6 +148,68 @@ export default function CommandPalette() {
       },
     },
     {
+      id: "inbox_zero",
+      name: "Inbox Zero Mode",
+      description: "Open triage with reply, archive, meeting, remind actions",
+      group: "Actions",
+      icon: (
+        <svg className="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+        </svg>
+      ),
+      keywords: ["triage", "zero", "archive", "remind", "keyboard"],
+      action: (r, _, close) => {
+        close();
+        startTransition(() => {
+          r.push("/inbox");
+          setTimeout(() => window.dispatchEvent(new CustomEvent("chiefos:triage-mode")), 250);
+        });
+      },
+    },
+    {
+      id: "calendar_sync",
+      name: "Sync Calendar",
+      description: "Pull the latest Google Calendar events",
+      group: "Actions",
+      icon: (
+        <svg className="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 8H18.2" />
+        </svg>
+      ),
+      keywords: ["sync", "google", "calendar", "events"],
+      action: async (_, setView, __) => {
+        setView("sending");
+        try {
+          await fetch("/api/calendar/sync", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ mode: "incremental" }),
+          });
+          setView("success");
+        } catch {
+          setView("list");
+        }
+      },
+    },
+    {
+      id: "calendar_quick_add",
+      name: "Calendar Quick Add",
+      description: "Open calendar natural-language event creation",
+      group: "Actions",
+      icon: (
+        <svg className="w-4 h-4 text-pink-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+        </svg>
+      ),
+      keywords: ["quick", "natural", "language", "calendar", "add"],
+      action: (r, _, close) => {
+        close();
+        startTransition(() => {
+          r.push("/calendar");
+        });
+      },
+    },
+    {
       id: "ask_chiefos",
       name: "Ask ChiefOS",
       description: "Query your AI Chief of Staff",
@@ -159,6 +223,50 @@ export default function CommandPalette() {
       action: (_, __, close) => {
         close();
         window.dispatchEvent(new CustomEvent("chiefos:open-ai"));
+      },
+    },
+    {
+      id: "find_availability",
+      name: "Find Availability",
+      description: "Find 3 free meeting slots from your calendar",
+      group: "AI",
+      icon: (
+        <svg className="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      ),
+      keywords: ["availability", "slots", "free", "schedule", "open", "time"],
+      action: async (_, setView, __) => {
+        setView("sending");
+        setAvailabilityLoading(true);
+        try {
+          const res = await fetch("/api/calendar/availability?window=next%20week&durationMinutes=30&limit=3");
+          const data = await res.json();
+          setAvailabilitySlots(data.slots || []);
+          setView("availability");
+        } catch {
+          setView("list");
+        } finally {
+          setAvailabilityLoading(false);
+        }
+      },
+    },
+    {
+      id: "meeting_context",
+      name: "Meeting Context",
+      description: "Open calendar and load meeting prep for an event",
+      group: "AI",
+      icon: (
+        <svg className="w-4 h-4 text-violet-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+        </svg>
+      ),
+      keywords: ["prep", "meeting", "context", "brief", "attendee", "intel"],
+      action: (r, _, close) => {
+        close();
+        startTransition(() => {
+          r.push("/calendar");
+        });
       },
     },
   ];
@@ -273,6 +381,11 @@ export default function CommandPalette() {
           e.preventDefault();
           setActiveView("list");
         }
+      } else if (activeView === "availability") {
+        if (e.key === "Escape") {
+          e.preventDefault();
+          setActiveView("list");
+        }
       } else if (activeView === "success") {
         if (e.key === "Escape" || e.key === "Enter") {
           e.preventDefault();
@@ -300,6 +413,7 @@ export default function CommandPalette() {
     setMeetingEnd("");
     setMeetingAttendees("");
     setReplyThreadId(null);
+    setAvailabilitySlots([]);
   };
 
   // API Call: Send Email
@@ -343,9 +457,25 @@ export default function CommandPalette() {
 
       setActiveView("success");
       setTimeout(() => handleClose(), 2000);
-    } catch (err: any) {
-      setErrorMessage(err.message || "Failed to send email");
+    } catch (err: unknown) {
+      setErrorMessage((err instanceof Error ? err.message : String(err)) || "Failed to send email");
       setActiveView("compose");
+    }
+  };
+
+  const handleDraftInMyVoice = async () => {
+    setErrorMessage(null);
+    try {
+      const res = await fetch("/api/email/style-profile");
+      if (!res.ok) throw new Error("Unable to load writing profile");
+      const data = await res.json();
+      const profile = data.profile;
+      const seed = emailBody.trim()
+        ? `${emailBody.trim()}\n\nStyle notes: ${profile.promptSnippet}`
+        : `Style notes: ${profile.promptSnippet}\n\nDraft the message here, keeping my usual greeting (${profile.greeting}) and sign-off (${profile.signoff}).`;
+      setEmailBody(seed);
+    } catch (err: unknown) {
+      setErrorMessage((err instanceof Error ? err.message : String(err)) || "Unable to load writing profile");
     }
   };
 
@@ -381,8 +511,8 @@ export default function CommandPalette() {
 
       setActiveView("success");
       setTimeout(() => handleClose(), 2000);
-    } catch (err: any) {
-      setErrorMessage(err.message || "Failed to create meeting");
+    } catch (err: unknown) {
+      setErrorMessage((err instanceof Error ? err.message : String(err)) || "Failed to create meeting");
       setActiveView("meeting");
     }
   };
@@ -568,6 +698,13 @@ export default function CommandPalette() {
 
                   <div className="space-y-1">
                     <label className="block text-[9px] font-extrabold text-slate-500 uppercase tracking-widest">Message Body</label>
+                    <button
+                      type="button"
+                      onClick={handleDraftInMyVoice}
+                      className="mb-1 px-2 py-1 rounded-lg text-[10px] font-bold bg-slate-900/70 text-amber-300 border border-slate-800 hover:border-amber-700 transition-all"
+                    >
+                      Draft in My Voice
+                    </button>
                     <textarea
                       rows={5}
                       value={emailBody}
@@ -737,6 +874,78 @@ export default function CommandPalette() {
                 <div className="text-center">
                   <p className="text-xs font-semibold text-emerald-400">Success!</p>
                   <p className="text-[10px] text-slate-500 mt-0.5">Action executed successfully</p>
+                </div>
+              </div>
+            )}
+            {/* Availability Slot Picker View */}
+            {activeView === "availability" && (
+              <div className="flex flex-col h-full">
+                <div className="px-4 py-3.5 border-b border-white/10 flex items-center justify-between shrink-0">
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setActiveView("list")}
+                      className="p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
+                      aria-label="Go back"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
+                      </svg>
+                    </button>
+                    <span className="text-[12px] font-extrabold text-white uppercase tracking-wider">Free Slots</span>
+                  </div>
+                  <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest bg-slate-900/60 border border-slate-800 px-2 py-0.5 rounded">
+                    ESC to close
+                  </span>
+                </div>
+
+                <div className="p-4 space-y-2 overflow-y-auto max-h-[48vh] custom-scrollbar">
+                  {availabilityLoading ? (
+                    <div className="flex items-center justify-center py-10">
+                      <div className="h-6 w-6 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+                    </div>
+                  ) : availabilitySlots.length === 0 ? (
+                    <div className="text-center py-8 text-slate-500 text-xs">
+                      No free slots found for next week.
+                    </div>
+                  ) : (
+                    availabilitySlots.map((slot, i) => (
+                      <button
+                        key={slot.startAt}
+                        id={`availability-slot-${i}`}
+                        onClick={() => {
+                          setMeetingStart(slot.startAt.slice(0, 16));
+                          setMeetingEnd(slot.endAt.slice(0, 16));
+                          setActiveView("meeting");
+                        }}
+                        className="w-full text-left px-4 py-3.5 rounded-xl border border-emerald-900/40 bg-emerald-950/10 hover:bg-emerald-950/25 hover:border-emerald-700/50 transition-all flex items-center gap-3 group"
+                      >
+                        <div className="h-8 w-8 shrink-0 rounded-lg bg-emerald-950/60 border border-emerald-900/40 flex items-center justify-center">
+                          <svg className="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[12px] font-bold text-slate-100 group-hover:text-emerald-300 transition-colors">{slot.label}</p>
+                          <p className="text-[10px] text-slate-500 mt-0.5">
+                            {new Date(slot.startAt).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })} &rarr; {new Date(slot.endAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
+                          </p>
+                        </div>
+                        <div className="text-[9px] font-extrabold uppercase text-emerald-400/80 tracking-widest mr-1 select-none group-hover:text-emerald-300">
+                          Use ↗
+                        </div>
+                      </button>
+                    ))
+                  )}
+                </div>
+
+                <div className="px-4 py-3 bg-black/20 border-t border-white/5 flex items-center justify-between shrink-0 select-none">
+                  <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Click a slot to pre-fill meeting form</span>
+                  <button
+                    onClick={() => setActiveView("list")}
+                    className="px-3 py-1.5 rounded-lg text-[10px] font-bold text-slate-400 hover:text-slate-200 border border-slate-800 hover:bg-slate-900/30 transition-all"
+                  >
+                    Back
+                  </button>
                 </div>
               </div>
             )}

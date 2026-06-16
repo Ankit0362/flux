@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { analyzeFollowUpsForUser } from "../followUpIntelligence";
-import { prisma } from "../../lib/db";
+import { analyzeFollowUpsForUser } from "../../src/services/followUpIntelligence";
+import { prisma } from "../../src/lib/db";
 
 // Mock the environment variable
 process.env.GEMINI_API_KEY = "test-api-key";
@@ -23,7 +23,7 @@ vi.mock("@google/genai", () => {
 });
 
 // Mock the Prisma client
-vi.mock("../../lib/db", () => {
+vi.mock("../../src/lib/db", () => {
   return {
     prisma: {
       emailThread: {

@@ -18,7 +18,6 @@ export async function GET(
     const prep = await generateMeetingPrep(user.id, id);
     return NextResponse.json({ prep });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Internal server error";
     console.error("Failed to generate meeting prep:", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }

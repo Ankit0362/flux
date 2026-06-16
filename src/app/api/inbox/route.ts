@@ -1,6 +1,5 @@
 import { getCurrentUser } from "@/lib/currentUser";
-import { corsair } from "@/lib/corsair";
-import { prisma } from "@/lib/db";
+import { prisma, pool } from "@/lib/db";
 import { parseEmailAddress } from "@/lib/emailUtils";
 import { NextRequest, NextResponse } from "next/server";
 import { isDemoMode } from "@/services/demoMode";
@@ -34,17 +33,23 @@ export async function GET(request: NextRequest) {
 
     if (user) {
       email = user.email;
-
+      // Check connection by looking for a stored Corsair account rather than
+      // making a live Gmail API call (which added 20+ seconds per request).
       try {
-        const tenantClient = corsair.withTenant(user.id) as any;
-        const profile = await tenantClient.gmail.api.users.getProfile({ userId: "me" });
-        if (profile && profile.emailAddress) {
-          isConnected = true;
-        }
+        const accounts = await pool.query(`
+          SELECT a.id 
+          FROM corsair_accounts a 
+          JOIN corsair_integrations i ON a.integration_id = i.id 
+          WHERE a.tenant_id = $1 AND i.name = 'gmail' 
+          LIMIT 1
+        `, [user.id]);
+        isConnected = accounts.rows.length > 0;
       } catch (err) {
-        console.warn("User credentials not fully connected or active in Corsair:", err);
+        console.error("Connection check failed:", err);
+        isConnected = false;
       }
     }
+
 
     // 2. Check for threadId query param to return single thread detail
     const { searchParams } = new URL(request.url);

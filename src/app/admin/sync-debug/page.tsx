@@ -49,8 +49,8 @@ export default function SyncDebugPage() {
       } else {
         addLog("Failed to fetch current synchronization state.");
       }
-    } catch (err: any) {
-      addLog(`Error fetching state: ${err.message}`);
+    } catch (err: unknown) {
+      addLog(`Error fetching state: ${(err instanceof Error ? err.message : String(err))}`);
     } finally {
       setLoading(false);
     }
@@ -86,8 +86,8 @@ export default function SyncDebugPage() {
       } else {
         addLog(`Error: ${data.error}`);
       }
-    } catch (err: any) {
-      addLog(`Action failed: ${err.message}`);
+    } catch (err: unknown) {
+      addLog(`Action failed: ${(err instanceof Error ? err.message : String(err))}`);
     } finally {
       setActionLoading(null);
     }

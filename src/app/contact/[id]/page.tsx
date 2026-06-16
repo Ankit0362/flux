@@ -38,9 +38,9 @@ export default function ContactDetailPage({
       }
       const data = await res.json();
       setDetail(data);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error fetching contact details:", err);
-      setError(err.message || "Failed to load contact details.");
+      setError((err instanceof Error ? err.message : String(err)) || "Failed to load contact details.");
     } finally {
       setLoading(false);
     }
@@ -57,7 +57,7 @@ export default function ContactDetailPage({
       }
       const data = await res.json();
       setInsight(data);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error generating insight:", err);
       setInsightError("Could not retrieve AI insights at this time.");
     } finally {
@@ -124,9 +124,9 @@ export default function ContactDetailPage({
 
       // Refresh list to pull updated data
       await fetchDetails(false);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Failed to update status:", err);
-      alert(err.message || "Failed to update status");
+      alert((err instanceof Error ? err.message : String(err)) || "Failed to update status");
     } finally {
       setUpdatingId(null);
     }

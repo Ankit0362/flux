@@ -37,19 +37,11 @@ RULES:
 5. Actions should be directly executable next steps (up to 3).
 6. Be concise, professional, and always grounded in real data.
 
-SEND EMAIL TOOL:
-- You have a send_email tool. Call it ONLY when the user explicitly asks to send, write, or email someone.
-- Before calling send_email, always call a read tool first (get_relationships, get_follow_ups, etc.) to retrieve the real recipient email address. NEVER fabricate email addresses.
-- The send_email tool sends immediately. Draft a professional message in the body argument.
-- After calling send_email, set actionType to "send_email" in your response actions with targetId set to the recipient's contact id (or "sent" if none).
-
-OTHER WRITE ACTION GUIDELINES:
-- Propose reply_to_thread when the user asks to reply to a specific email thread (threadId must come from evidence items).
-- Propose create_calendar_event when the user asks to schedule a meeting, block time, or set up a call.
-- For each proposed write action, populate pendingPayload exactly as follows:
-  - reply_to_thread: { kind: "reply_to_thread", threadId: "<DB thread id from evidence>", to: ["email@example.com"], body: "..." }
-  - create_calendar_event: { kind: "create_calendar_event", title: "...", startAt: "<ISO 8601>", endAt: "<ISO 8601>", attendees: ["email@example.com"] }
-- Limit to 1 write action per response. Never propose multiple sends in one turn.`;
+WRITE ACTION GUIDELINES:
+- You now have native write tools (send_email, reply_to_thread, create_calendar_event, reschedule_calendar_event, create_commitment).
+- Call these tools directly when the user asks you to take action.
+- DO NOT return write actions in your final JSON response. The system will automatically intercept your native tool calls and ask the user for confirmation.
+- Only return READ-based UI actions (draft_email, view_commitment, view_contact, mark_complete, view_inbox) in your final JSON response actions array.`;
 
 // ─── Response Schema ──────────────────────────────────────────────────────────
 
@@ -79,7 +71,8 @@ const RESPONSE_SCHEMA = {
             type: "STRING",
             enum: [
               "draft_email", "view_commitment", "view_contact", "mark_complete", "view_inbox",
-              "send_email", "reply_to_thread", "create_calendar_event",
+              "send_email", "reply_to_thread", "create_calendar_event", "create_event_and_send_email",
+              "reschedule_calendar_event", "create_commitment", "update_commitment", "execute_negotiation"
             ],
           },
           targetId: { type: "STRING" },
@@ -88,7 +81,7 @@ const RESPONSE_SCHEMA = {
             type: "OBJECT",
             description: "Only for write actions (send_email, reply_to_thread, create_calendar_event). Omit for read actions.",
             properties: {
-              kind: { type: "STRING", enum: ["send_email", "reply_to_thread", "create_calendar_event"] },
+              kind: { type: "STRING", enum: ["send_email", "reply_to_thread", "create_calendar_event", "create_event_and_send_email", "reschedule_calendar_event", "create_commitment", "update_commitment", "execute_negotiation"] },
               to: { type: "ARRAY", items: { type: "STRING" } },
               subject: { type: "STRING" },
               body: { type: "STRING" },
@@ -176,10 +169,46 @@ export async function POST(request: NextRequest) {
       const functionCallParts = parts.filter((p: Part) => p.functionCall);
 
       if (functionCallParts.length > 0) {
+        // Intercept Write Actions to require confirmation
+        const WRITE_TOOLS = new Set([
+          "send_email", "reply_to_thread", "create_calendar_event",
+          "reschedule_calendar_event", "create_commitment",
+          "update_commitment", "execute_negotiation"
+        ]);
+        
+        const writeCall = functionCallParts.find(p => p.functionCall && WRITE_TOOLS.has(p.functionCall.name!));
+        
+        if (writeCall) {
+          const { name, args } = writeCall.functionCall!;
+          const argDict = (args as Record<string, unknown>) ?? {};
+          
+          let actionLabel = "Execute Action";
+          if (name === "send_email") actionLabel = "Send Email";
+          else if (name === "reply_to_thread") actionLabel = "Reply to Thread";
+          else if (name === "create_calendar_event") actionLabel = "Create Event";
+          else if (name === "reschedule_calendar_event") actionLabel = "Reschedule Event";
+          else if (name === "create_commitment") actionLabel = "Create Commitment";
+          else if (name === "update_commitment") actionLabel = "Update Commitment";
+          
+          finalAnswer = {
+            answer: "I've drafted the requested action. Please review and confirm to proceed.",
+            evidence: [],
+            actions: [
+              {
+                actionType: name as string,
+                targetId: "pending",
+                label: actionLabel,
+                pendingPayload: { kind: name as string, ...argDict }
+              }
+            ]
+          };
+          break; // Halt agent loop and return to client
+        }
+
         // Append the model's function call turn to history
         contents.push({ role: "model", parts });
 
-        // Execute each tool call and collect results
+        // Execute each READ tool call and collect results
         const toolResponseParts: Part[] = await Promise.all(
           functionCallParts.map(async (p: Part) => {
             const { name, args } = p.functionCall!;

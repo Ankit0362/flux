@@ -14,14 +14,20 @@ export type ReadActionType =
 export type WriteActionType =
   | "send_email"
   | "reply_to_thread"
-  | "create_calendar_event";
+  | "create_calendar_event"
+  | "reschedule_calendar_event"
+  | "create_commitment";
 
-export type ActionType = ReadActionType | WriteActionType;
+export type ActionType = ReadActionType | WriteActionType | string;
 
-export const WRITE_ACTION_TYPES: WriteActionType[] = [
+export const WRITE_ACTION_TYPES: string[] = [
   "send_email",
   "reply_to_thread",
   "create_calendar_event",
+  "reschedule_calendar_event",
+  "create_commitment",
+  "update_commitment",
+  "execute_negotiation"
 ];
 
 // ─── Pending Payloads (for write actions) ─────────────────────────────────────
@@ -50,7 +56,21 @@ export interface CreateEventPayload {
   location?: string;
 }
 
-export type PendingPayload = SendEmailPayload | ReplyPayload | CreateEventPayload;
+export interface RescheduleEventPayload {
+  kind: "reschedule_calendar_event";
+  eventId: string;
+  startAt: string;
+  endAt: string;
+}
+
+export interface CreateCommitmentPayload {
+  kind: "create_commitment";
+  title: string;
+  dueDate?: string;
+  contactEmail?: string;
+}
+
+export type PendingPayload = SendEmailPayload | ReplyPayload | CreateEventPayload | RescheduleEventPayload | CreateCommitmentPayload | { kind: string; [key: string]: any };
 
 // ─── Core interfaces ──────────────────────────────────────────────────────────
 

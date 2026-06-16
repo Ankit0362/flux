@@ -2,6 +2,11 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { Sidebar } from "@/components/Sidebar";
+import FullCalendar from "@fullcalendar/react";
+import dayGridPlugin from "@fullcalendar/daygrid";
+import timeGridPlugin from "@fullcalendar/timegrid";
+import interactionPlugin from "@fullcalendar/interaction";
 
 export default function CalendarPage() {
   const [events, setEvents] = useState<any[]>([]);
@@ -17,7 +22,20 @@ export default function CalendarPage() {
   const [newEventStart, setNewEventStart] = useState("");
   const [newEventEnd, setNewEventEnd] = useState("");
   const [newEventAttendees, setNewEventAttendees] = useState("");
+  const [newEventDetails, setNewEventDetails] = useState("");
   const [creating, setCreating] = useState(false);
+  const [syncingCalendar, setSyncingCalendar] = useState(false);
+  const [availabilitySlots, setAvailabilitySlots] = useState<any[]>([]);
+  const [quickAddInput, setQuickAddInput] = useState("");
+  const [quickAddDraft, setQuickAddDraft] = useState<any | null>(null);
+  const [quickAdding, setQuickAdding] = useState(false);
+  const [calendarNotConnected, setCalendarNotConnected] = useState(false);
+
+
+  // Meeting Prep Drawer
+  const [prepEventId, setPrepEventId] = useState<string | null>(null);
+  const [prepData, setPrepData] = useState<any | null>(null);
+  const [prepLoading, setPrepLoading] = useState(false);
 
   const fetchEvents = useCallback(async (showLoading = true) => {
     if (showLoading) setLoading(true);
@@ -29,11 +47,23 @@ export default function CalendarPage() {
       }
       const data = await res.json();
       setEvents(data.events || []);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error fetching calendar events:", err);
-      setError(err.message || "Failed to load calendar data.");
+      setError((err instanceof Error ? err.message : String(err)) || "Failed to load calendar data.");
     } finally {
       setLoading(false);
+    }
+  }, []);
+
+  const fetchConnectionStatus = useCallback(async () => {
+    try {
+      const res = await fetch("/api/calendar/status");
+      if (res.ok) {
+        const data = await res.json();
+        setCalendarNotConnected(!data.connected);
+      }
+    } catch (err) {
+      console.error("Failed to check calendar connection status:", err);
     }
   }, []);
 
@@ -55,7 +85,8 @@ export default function CalendarPage() {
   useEffect(() => {
     fetchEvents();
     fetchUserData();
-  }, [fetchEvents, fetchUserData]);
+    fetchConnectionStatus();
+  }, [fetchEvents, fetchUserData, fetchConnectionStatus]);
 
   const handleCreateEvent = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -76,10 +107,14 @@ export default function CalendarPage() {
           startAt: newEventStart,
           endAt: newEventEnd,
           attendees,
+          description: newEventDetails,
         }),
       });
 
-      if (!res.ok) throw new Error("Failed to create event");
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Failed to create event");
+      }
       
       // Reset form and reload events
       setIsDrawerOpen(false);
@@ -87,14 +122,110 @@ export default function CalendarPage() {
       setNewEventStart("");
       setNewEventEnd("");
       setNewEventAttendees("");
+      setNewEventDetails("");
       await fetchEvents(false);
-    } catch (err) {
+    } catch (err: unknown) {
       console.error("Failed to create event:", err);
-      alert("Failed to create event. See console.");
+      alert((err instanceof Error ? err.message : String(err)) || "Failed to create event. See console.");
     } finally {
       setCreating(false);
     }
   };
+
+  const handleCalendarSync = async () => {
+    setSyncingCalendar(true);
+    try {
+      const res = await fetch("/api/calendar/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode: "incremental" }),
+      });
+      if (!res.ok) throw new Error("Calendar sync failed");
+      await fetchEvents(false);
+    } catch (err) {
+      console.error("Calendar sync failed:", err);
+      alert("Calendar sync failed. Check the console for details.");
+    } finally {
+      setSyncingCalendar(false);
+    }
+  };
+
+  const handleFindAvailability = async () => {
+    try {
+      const res = await fetch("/api/calendar/availability?window=next%20week&durationMinutes=30");
+      if (!res.ok) throw new Error("Failed to find availability");
+      const data = await res.json();
+      setAvailabilitySlots(data.slots || []);
+    } catch (err) {
+      console.error("Failed to find availability:", err);
+    }
+  };
+
+  const handleOpenPrep = async (eventId: string) => {
+    setPrepEventId(eventId);
+    setPrepData(null);
+    setPrepLoading(true);
+    try {
+      const res = await fetch(`/api/meeting/${eventId}/brief`);
+      if (!res.ok) throw new Error("Failed to load meeting prep");
+      const data = await res.json();
+      setPrepData(data.brief);
+    } catch (err) {
+      console.error("Meeting prep failed:", err);
+    } finally {
+      setPrepLoading(false);
+    }
+  };
+
+  const handleDeleteEvent = async (eventId: string) => {
+    if (!confirm("Are you sure you want to delete this event?")) return;
+    try {
+      const res = await fetch(`/api/calendar/${eventId}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) throw new Error("Failed to delete event");
+      
+      setPrepEventId(null);
+      setPrepData(null);
+      await fetchEvents(false);
+    } catch (err) {
+      console.error("Failed to delete event:", err);
+      alert("Failed to delete event. See console for details.");
+    }
+  };
+
+  const handleQuickAdd = async (create = false) => {
+    if (!quickAddInput.trim()) return;
+    setQuickAdding(true);
+    try {
+      const res = await fetch("/api/calendar/quick-add", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ input: quickAddInput, create }),
+      });
+      if (res.status === 403) {
+        const data = await res.json();
+        if (data.code === "calendar_not_connected") {
+          setCalendarNotConnected(true);
+          return;
+        }
+      }
+      if (!res.ok) throw new Error("Quick add failed");
+      const data = await res.json();
+      setQuickAddDraft(data.draft);
+      if (create) {
+        setQuickAddInput("");
+        setQuickAddDraft(null);
+        await fetchEvents(false);
+      }
+    } catch (err) {
+      console.error("Quick add failed:", err);
+      alert("Quick add failed. Check the console.");
+    } finally {
+      setQuickAdding(false);
+    }
+  };
+
 
   const formatTime = (dateStr: string) => {
     return new Date(dateStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -113,94 +244,46 @@ export default function CalendarPage() {
   });
 
   return (
-    <div className="flex h-screen w-full bg-[#05070f] text-slate-100 font-sans overflow-hidden">
+    <div className="flex h-screen w-full bg-[#FAFAF9] text-[#0C0A09] font-sans overflow-hidden">
       {/* Sidebar Navigation */}
-      <aside className="w-64 border-r border-slate-800 bg-[#080a14] flex flex-col justify-between shrink-0">
-        <div>
-          {/* Logo */}
-          <div className="p-6 border-b border-slate-800 flex items-center gap-3">
-            <div className="h-8 w-8 rounded-lg bg-gradient-to-tr from-amber-600 to-stone-500 flex items-center justify-center font-extrabold text-white shadow-lg shadow-amber-900/30">
-              C
-            </div>
-            <div>
-              <span className="font-extrabold text-lg bg-gradient-to-r from-amber-400 to-stone-300 bg-clip-text text-transparent">
-                ChiefOS
-              </span>
-              <span className="text-[10px] block text-slate-500 tracking-wider font-semibold uppercase">
-                COGNITIVE LAYER
-              </span>
-            </div>
-          </div>
-
-          {/* Nav Links */}
-          <nav className="p-4 space-y-1.5">
-            <a
-              href="/dashboard"
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-900/40 transition-all border border-transparent"
-            >
-              <svg className="w-5 h-5 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-              </svg>
-              Daily Briefing
-            </a>
-            <a
-              href="/inbox"
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-900/40 transition-all border border-transparent"
-            >
-              <svg className="w-5 h-5 text-slate-450" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0a2 2 0 01-2 2H6a2 2 0 01-2-2m16 0V9a2 2 0 00-2-2H6a2 2 0 00-2 2v6" />
-              </svg>
-              Inbox
-            </a>
-            <a
-              href="/calendar"
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all bg-amber-950/40 text-amber-200 border border-amber-900/30 shadow-inner"
-            >
-              <svg className="w-5 h-5 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-              Calendar
-            </a>
-            <a
-              href="/contacts"
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-900/40 transition-all border border-transparent"
-            >
-              <svg className="w-5 h-5 text-slate-450" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-              </svg>
-              Contacts
-            </a>
-          </nav>
-        </div>
-
-        {/* User Account Info */}
-        <div className="p-4 border-t border-slate-800/80 m-4 rounded-2xl bg-slate-900/30">
-          <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center font-bold text-slate-300">
-              {userData?.userName?.charAt(0).toUpperCase() || "U"}
-            </div>
-            <div className="overflow-hidden">
-              <div className="text-sm font-semibold truncate text-slate-200">
-                {userData?.userName || "User"}
-              </div>
-              <div className="text-xs text-slate-500 truncate">
-                {userData?.userEmail || "Loading..."}
-              </div>
-            </div>
-          </div>
-        </div>
-      </aside>
+      {/* Sidebar Navigation */}
+      <Sidebar
+        activePage="calendar"
+        userName={userData?.userName}
+        userEmail={userData?.userEmail}
+        syncing={syncingCalendar}
+        onManualSync={handleCalendarSync}
+      />
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col relative overflow-hidden h-screen z-0">
-        <header className="h-16 border-b border-slate-800/60 bg-[#080a14]/90 backdrop-blur-md flex items-center justify-between px-6 shrink-0 relative z-20">
-          <h1 className="text-lg font-bold text-slate-100 flex items-center gap-2">
+        <header className="h-16 border-b border-[#E8ECF0] bg-white/90 backdrop-blur-md flex items-center justify-between px-6 shrink-0 relative z-20">
+          <h1 className="text-lg font-bold text-[#0C0A09] flex items-center gap-2">
             Upcoming Agenda
           </h1>
           <div className="flex items-center gap-3">
+            <button
+              onClick={handleCalendarSync}
+              disabled={syncingCalendar}
+              className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold bg-[#F3F4F6] hover:bg-[#F3F4F6] text-[#0C0A09] border border-[#E8ECF0] transition-all disabled:opacity-50"
+            >
+              <svg className={`w-4 h-4 ${syncingCalendar ? "animate-spin" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 8H18.2" />
+              </svg>
+              {syncingCalendar ? "Syncing" : "Sync"}
+            </button>
+            <button
+              onClick={handleFindAvailability}
+              className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold bg-[#F3F4F6] hover:bg-[#E5E7EB] text-[#0C0A09] border border-[#E8ECF0] transition-all"
+            >
+              <svg className="w-4 h-4 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3A9 9 0 113 12a9 9 0 0118 0z" />
+              </svg>
+              {availabilitySlots.length > 0 ? `${availabilitySlots.length} Suggestions` : 'Find Free Time'}
+            </button>
             <button 
               onClick={() => setIsDrawerOpen(true)}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold bg-gradient-to-r from-amber-600 to-stone-600 hover:from-amber-500 hover:to-stone-500 text-white shadow-lg shadow-amber-950/20 transition-all"
+              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold bg-gradient-to-r from-amber-600 to-stone-600 text-white shadow-lg shadow-amber-950/20 transition-all hover:-translate-y-0.5 active:scale-95"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -211,7 +294,51 @@ export default function CalendarPage() {
         </header>
 
         <div className="flex-1 overflow-y-auto p-6 md:p-8">
+          <div className="max-w-4xl mx-auto mb-6">
+            {availabilitySlots.length > 0 && (
+              <div className="bg-white border border-emerald-200 shadow-sm rounded-2xl p-4 min-w-[260px]">
+                <div className="text-[10px] font-extrabold uppercase tracking-widest text-emerald-600 mb-3">
+                  Suggested slots
+                </div>
+                <div className="space-y-2">
+                  {availabilitySlots.map((slot) => (
+                    <button
+                      key={slot.startAt}
+                      onClick={() => {
+                        setNewEventStart(slot.startAt.slice(0, 16));
+                        setNewEventEnd(slot.endAt.slice(0, 16));
+                        setIsDrawerOpen(true);
+                      }}
+                      className="block w-full text-left rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-2.5 text-sm font-medium text-emerald-900 hover:border-emerald-300 hover:bg-emerald-100 transition-all"
+                    >
+                      {slot.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {calendarNotConnected && (
+            <div className="max-w-4xl mx-auto mb-6 flex items-center gap-4 rounded-2xl border border-amber-800/40 bg-amber-950/20 px-5 py-4">
+              <svg className="w-5 h-5 text-amber-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              <div className="flex-1">
+                <div className="text-sm font-bold text-amber-200">Google Calendar not connected</div>
+                <div className="text-xs text-amber-400/80 mt-0.5">Connect your Google Calendar to create events directly from ChiefOS.</div>
+              </div>
+              <a
+                href="/api/auth/google?plugin=googlecalendar"
+                className="shrink-0 px-4 py-2 rounded-xl text-xs font-bold bg-amber-600 hover:bg-amber-500 text-[#0C0A09] transition-all shadow-lg shadow-amber-950/30"
+              >
+                Connect Calendar
+              </a>
+            </div>
+          )}
+
           {error && (
+
             <div className="p-4 mb-6 rounded-xl border border-rose-900/30 bg-rose-950/15 text-rose-350 text-sm font-semibold">
               {error}
             </div>
@@ -219,10 +346,10 @@ export default function CalendarPage() {
 
           {loading ? (
             <div className="flex items-center justify-center h-64">
-              <div className="h-8 w-8 border-4 border-slate-800 border-t-amber-500 rounded-full animate-spin"></div>
+              <div className="h-8 w-8 border-4 border-[#E8ECF0] border-t-amber-500 rounded-full animate-spin"></div>
             </div>
           ) : events.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-64 text-slate-500">
+            <div className="flex flex-col items-center justify-center h-64 text-[#57534E]">
               <svg className="w-16 h-16 mb-4 text-slate-800" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
@@ -230,82 +357,95 @@ export default function CalendarPage() {
               <p className="text-sm mt-1">Your schedule is clear</p>
             </div>
           ) : (
-            <div className="max-w-4xl mx-auto space-y-10">
-              {Object.entries(groupedEvents).map(([day, dayEvents]) => (
-                <div key={day} className="space-y-4">
-                  <h2 className="text-sm font-bold text-slate-400 uppercase tracking-widest sticky top-0 bg-[#05070f]/90 backdrop-blur py-2 z-10">
-                    {day}
-                  </h2>
-                  <div className="space-y-3">
-                    {dayEvents.map((event) => {
-                      // Determine border color based on health/commitments
-                      let borderColor = "border-slate-800";
-                      let indicator = null;
-                      
-                      const hasAtRisk = event.attendees?.some((a: any) => a.relationshipHealth === "At Risk");
-                      const allStrong = event.attendees?.length > 0 && event.attendees?.every((a: any) => a.relationshipHealth === "Strong");
-                      
-                      if (hasAtRisk) {
-                        borderColor = "border-rose-900/50";
-                        indicator = <div className="absolute top-4 right-4 w-2 h-2 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.6)] animate-pulse"></div>;
-                      } else if (allStrong) {
-                        borderColor = "border-emerald-900/50";
-                      } else if (event.commitments?.length > 0) {
-                        borderColor = "border-amber-900/50";
-                      }
-
-                      return (
-                        <div 
-                          key={event.id}
-                          className={`glass-card p-4 rounded-2xl border ${borderColor} hover:border-amber-500/50 transition-all group relative cursor-pointer`}
-                        >
-                          {indicator}
-                          <div className="flex gap-4">
-                            <div className="w-20 shrink-0 text-right pt-1">
-                              <div className="text-sm font-bold text-slate-200">{formatTime(event.startAt)}</div>
-                              <div className="text-xs text-slate-500">{formatTime(event.endAt)}</div>
-                            </div>
-                            <div className="flex-1 border-l border-slate-800 pl-4">
-                              <h3 className="text-base font-bold text-slate-100 group-hover:text-amber-300 transition-colors">
-                                {event.title}
-                              </h3>
-                              {event.location && (
-                                <div className="text-xs text-slate-400 mt-1 flex items-center gap-1">
-                                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                                  </svg>
-                                  {event.location}
-                                </div>
-                              )}
-                              
-                              {/* Attendees */}
-                              {event.attendees && event.attendees.length > 0 && (
-                                <div className="mt-3 flex flex-wrap gap-2">
-                                  {event.attendees.map((attendee: any) => {
-                                    let badgeColor = "bg-slate-900 border-slate-800 text-slate-300";
-                                    if (attendee.relationshipHealth === "At Risk") badgeColor = "bg-rose-950/40 border-rose-900/50 text-rose-300";
-                                    if (attendee.relationshipHealth === "Strong") badgeColor = "bg-emerald-950/40 border-emerald-900/50 text-emerald-300";
-                                    
-                                    return (
-                                      <span key={attendee.id} className={`text-xs px-2 py-1 rounded-md border ${badgeColor} flex items-center gap-1.5`}>
-                                        <div className="w-4 h-4 rounded-full bg-black/40 flex items-center justify-center font-bold text-[8px] uppercase">
-                                          {(attendee.name || attendee.email).charAt(0)}
-                                        </div>
-                                        {attendee.name || attendee.email.split('@')[0]}
-                                      </span>
-                                    );
-                                  })}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
+            <div className="max-w-5xl mx-auto bg-white rounded-2xl border border-[#E8ECF0] p-4 shadow-sm">
+              <style>{`
+                .fc-theme-standard td, .fc-theme-standard th {
+                  border-color: #E8ECF0 !important;
+                }
+                .fc-col-header-cell-cushion {
+                  color: #0C0A09 !important;
+                  font-weight: 600;
+                  padding: 8px !important;
+                }
+                .fc-daygrid-day-number {
+                  color: #57534E !important;
+                }
+                .fc-event {
+                  background-color: #FEF3C7 !important; /* amber-100 */
+                  border: 1px solid #FDE68A !important; /* amber-200 */
+                  color: #78350F !important; /* amber-900 */
+                  border-radius: 6px !important;
+                  padding: 2px 4px;
+                  font-size: 0.75rem;
+                  font-weight: 600;
+                  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+                }
+                .fc-timegrid-slot-label-cushion {
+                  color: #57534E !important;
+                }
+                .fc .fc-toolbar-title {
+                  color: #0C0A09 !important;
+                  font-weight: 700;
+                  font-size: 1.25rem;
+                }
+                .fc .fc-button-primary {
+                  background-color: #FAFAF9 !important;
+                  border-color: #E8ECF0 !important;
+                  color: #0C0A09 !important;
+                  text-transform: capitalize;
+                  font-weight: 600;
+                }
+                .fc .fc-button-primary:hover {
+                  background-color: #F3F4F6 !important;
+                }
+                .fc .fc-button-primary:not(:disabled).fc-button-active, .fc .fc-button-primary:not(:disabled):active {
+                  background-color: #e5e7eb !important;
+                  border-color: #d1d5db !important;
+                }
+                .fc-v-event,
+                .fc-v-event * {
+                  background-color: #FEF3C7 !important;
+                  border-color: #FDE68A !important;
+                  color: #78350F !important;
+                }
+                .fc-v-event {
+                  border-left: 3px solid #F59E0B !important;
+                }
+                .fc-event-main {
+                  padding: 2px;
+                  overflow: hidden;
+                  text-overflow: ellipsis;
+                  white-space: nowrap;
+                  line-height: 1.2;
+                }
+              `}</style>
+              <FullCalendar
+                plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+                initialView="timeGridWeek"
+                headerToolbar={{
+                  left: "prev,next today",
+                  center: "title",
+                  right: "dayGridMonth,timeGridWeek,timeGridDay",
+                }}
+                displayEventTime={false}
+                slotEventOverlap={false}
+                events={events.map((e) => ({
+                  id: e.id,
+                  title: e.title,
+                  start: e.startAt,
+                  end: e.endAt,
+                  extendedProps: { ...e },
+                }))}
+                eventClick={(info) => {
+                  handleOpenPrep(info.event.id);
+                }}
+                height="700px"
+                allDaySlot={false}
+                slotMinTime="07:00:00"
+                slotMaxTime="22:00:00"
+                nowIndicator={true}
+                editable={false}
+              />
             </div>
           )}
         </div>
@@ -319,7 +459,7 @@ export default function CalendarPage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40"
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-60"
               onClick={() => setIsDrawerOpen(false)}
             />
             <motion.div
@@ -327,13 +467,13 @@ export default function CalendarPage() {
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="fixed bottom-0 left-0 right-0 md:left-auto md:w-[500px] h-[85vh] bg-[#0c0f1d] border-t border-l border-slate-800 shadow-2xl z-50 flex flex-col md:rounded-tl-2xl overflow-hidden"
+              className="fixed bottom-0 left-0 right-0 md:left-auto md:w-[500px] h-[85vh] bg-[#FAFAF9] border-t border-l border-[#E8ECF0] shadow-2xl z-70 flex flex-col md:rounded-tl-2xl overflow-hidden"
             >
-              <div className="p-4 border-b border-slate-800 flex justify-between items-center bg-[#0a0d18]">
-                <h2 className="text-lg font-bold text-slate-100">Create New Event</h2>
+              <div className="p-4 border-b border-[#E8ECF0] flex justify-between items-center bg-[#FAFAF9]">
+                <h2 className="text-lg font-bold text-[#0C0A09]">Create New Event</h2>
                 <button 
                   onClick={() => setIsDrawerOpen(false)}
-                  className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
+                  className="p-2 text-[#57534E] hover:text-[#0C0A09] rounded-lg hover:bg-[#F3F4F6] transition-colors"
                 >
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -344,59 +484,69 @@ export default function CalendarPage() {
               <div className="flex-1 overflow-y-auto p-6">
                 <form id="create-event-form" onSubmit={handleCreateEvent} className="space-y-5">
                   <div>
-                    <label className="block text-xs font-bold text-slate-400 mb-1.5 uppercase tracking-wider">Event Title</label>
+                    <label className="block text-xs font-bold text-[#57534E] mb-1.5 uppercase tracking-wider">Event Title</label>
                     <input 
                       type="text" 
                       required
                       value={newEventTitle}
                       onChange={e => setNewEventTitle(e.target.value)}
-                      className="glass-input w-full p-3 rounded-xl bg-slate-900/50 border border-slate-800 text-white focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/50"
+                      className="bg-white border border-[#E8ECF0] shadow-sm w-full p-3 rounded-xl bg-[#F3F4F6] border border-[#E8ECF0] text-[#0C0A09] focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/50"
                       placeholder="E.g., Quarterly Review"
                     />
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs font-bold text-slate-400 mb-1.5 uppercase tracking-wider">Start Time</label>
+                      <label className="block text-xs font-bold text-[#57534E] mb-1.5 uppercase tracking-wider">Start Time</label>
                       <input 
                         type="datetime-local" 
                         required
                         value={newEventStart}
                         onChange={e => setNewEventStart(e.target.value)}
-                        className="glass-input w-full p-3 rounded-xl bg-slate-900/50 border border-slate-800 text-white focus:outline-none focus:border-amber-500/50"
+                        className="bg-white border border-[#E8ECF0] shadow-sm w-full p-3 rounded-xl bg-[#F3F4F6] border border-[#E8ECF0] text-[#0C0A09] focus:outline-none focus:border-amber-500/50"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-slate-400 mb-1.5 uppercase tracking-wider">End Time</label>
+                      <label className="block text-xs font-bold text-[#57534E] mb-1.5 uppercase tracking-wider">End Time</label>
                       <input 
                         type="datetime-local" 
                         required
                         value={newEventEnd}
                         onChange={e => setNewEventEnd(e.target.value)}
-                        className="glass-input w-full p-3 rounded-xl bg-slate-900/50 border border-slate-800 text-white focus:outline-none focus:border-amber-500/50"
+                        className="bg-white border border-[#E8ECF0] shadow-sm w-full p-3 rounded-xl bg-[#F3F4F6] border border-[#E8ECF0] text-[#0C0A09] focus:outline-none focus:border-amber-500/50"
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-slate-400 mb-1.5 uppercase tracking-wider">Attendees (comma-separated)</label>
+                    <label className="block text-xs font-bold text-[#57534E] mb-1.5 uppercase tracking-wider">Attendees (comma-separated)</label>
                     <input 
                       type="text" 
                       value={newEventAttendees}
                       onChange={e => setNewEventAttendees(e.target.value)}
-                      className="glass-input w-full p-3 rounded-xl bg-slate-900/50 border border-slate-800 text-white focus:outline-none focus:border-amber-500/50"
+                      className="bg-white border border-[#E8ECF0] shadow-sm w-full p-3 rounded-xl bg-[#F3F4F6] text-[#0C0A09] focus:outline-none focus:border-amber-500/50"
                       placeholder="sarah@example.com, mike@example.com"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-[#57534E] mb-1.5 uppercase tracking-wider">Description / Details</label>
+                    <textarea 
+                      value={newEventDetails}
+                      onChange={e => setNewEventDetails(e.target.value)}
+                      className="bg-white border border-[#E8ECF0] shadow-sm w-full p-3 rounded-xl bg-[#F3F4F6] text-[#0C0A09] focus:outline-none focus:border-amber-500/50 min-h-[100px] resize-y"
+                      placeholder="Agenda, goals, or meeting links..."
                     />
                   </div>
                 </form>
               </div>
 
-              <div className="p-4 border-t border-slate-800 bg-[#0a0d18]">
+              <div className="p-4 border-t border-[#E8ECF0] bg-[#FAFAF9]">
                 <button
                   type="submit"
                   form="create-event-form"
                   disabled={creating}
-                  className="w-full py-3 rounded-xl font-bold text-white bg-gradient-to-r from-amber-600 to-stone-600 hover:from-amber-500 hover:to-stone-500 shadow-lg shadow-amber-900/20 disabled:opacity-50 transition-all flex justify-center items-center gap-2"
+                  className="w-full py-3 rounded-xl font-bold text-[#0C0A09] bg-gradient-to-r from-amber-600 to-stone-600 hover:from-amber-500 hover:to-stone-500 shadow-lg shadow-amber-900/20 disabled:opacity-50 transition-all flex justify-center items-center gap-2"
                 >
                   {creating ? (
                     <>
@@ -405,6 +555,207 @@ export default function CalendarPage() {
                     </>
                   ) : "Create Calendar Event"}
                 </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Meeting Prep Drawer */}
+      <AnimatePresence>
+        {prepEventId && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-60"
+              onClick={() => { setPrepEventId(null); setPrepData(null); }}
+            />
+            <motion.div
+              initial={{ x: "100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "100%" }}
+              transition={{ type: "spring", damping: 26, stiffness: 220 }}
+              className="fixed top-0 right-0 bottom-0 w-full max-w-[480px] bg-[#FAFAF9] border-l border-[#E8ECF0] shadow-2xl z-70 flex flex-col overflow-hidden"
+            >
+              {/* Drawer Header */}
+              <div className="p-5 border-b border-[#E8ECF0] bg-white flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="h-8 w-8 rounded-lg bg-violet-950/60 border border-violet-900/40 flex items-center justify-center">
+                    <svg className="w-4 h-4 text-violet-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-xs font-extrabold uppercase tracking-widest text-violet-300">Meeting Prep</p>
+                    <p className="text-sm font-bold text-[#0C0A09] truncate max-w-[280px]">{prepData?.title ?? "Loading..."}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => { setPrepEventId(null); setPrepData(null); }}
+                  className="p-2 text-[#57534E] hover:text-[#0C0A09] rounded-lg hover:bg-[#F3F4F6] transition-colors"
+                >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Drawer Body */}
+              <div className="flex-1 overflow-y-auto p-5 space-y-5 custom-scrollbar">
+                {prepLoading ? (
+                  <div className="flex flex-col items-center justify-center h-48 gap-3">
+                    <div className="h-8 w-8 border-2 border-violet-600 border-t-transparent rounded-full animate-spin" />
+                    <p className="text-xs text-[#57534E]">Generating meeting intel...</p>
+                  </div>
+                ) : prepData ? (
+                  <>
+                    {/* Countdown */}
+                    {typeof prepData.meetingStartsInMinutes === "number" && (
+                      <div className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-bold ${
+                        prepData.meetingStartsInMinutes < 0
+                          ? "bg-rose-950/20 border-rose-900/40 text-rose-300"
+                          : prepData.meetingStartsInMinutes < 60
+                          ? "bg-amber-950/20 border-amber-900/40 text-amber-300"
+                          : "bg-[#FAFAF9] border-[#E8ECF0] text-[#57534E]"
+                      }`}>
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        {prepData.meetingStartsInMinutes < 0
+                          ? `Started ${Math.abs(prepData.meetingStartsInMinutes)}m ago`
+                          : prepData.meetingStartsInMinutes < 60
+                          ? `Starts in ${prepData.meetingStartsInMinutes}m`
+                          : `Starts in ${Math.round(prepData.meetingStartsInMinutes / 60)}h ${prepData.meetingStartsInMinutes % 60}m`}
+                      </div>
+                    )}
+
+                    {/* Relationship Summary */}
+                    {prepData.relationshipSummary && (
+                      <div className="rounded-xl bg-indigo-950/15 border border-indigo-900/30 p-4">
+                        <p className="text-[10px] font-extrabold uppercase tracking-widest text-indigo-400 mb-2">Relationship Context</p>
+                        <p className="text-xs text-[#57534E] leading-relaxed whitespace-pre-line">{prepData.relationshipSummary}</p>
+                      </div>
+                    )}
+
+                    {/* Recent Conversations */}
+                    {prepData.recentConversationSummary && (
+                      <div className="rounded-xl bg-violet-950/15 border border-violet-900/30 p-4 mt-2">
+                        <p className="text-[10px] font-extrabold uppercase tracking-widest text-violet-400 mb-2">Recent Threads</p>
+                        <p className="text-xs text-[#57534E] leading-relaxed whitespace-pre-line">{prepData.recentConversationSummary}</p>
+                      </div>
+                    )}
+
+                    {/* Risks Detected */}
+                    {prepData.risks?.length > 0 && (
+                      <div className="rounded-xl bg-rose-950/15 border border-rose-900/30 p-4 mt-2">
+                        <p className="text-[10px] font-extrabold uppercase tracking-widest text-rose-400 mb-2">High Risks Detected</p>
+                        <ul className="space-y-1.5">
+                          {prepData.risks.map((r: any, i: number) => (
+                            <li key={i} className="flex items-start gap-2 text-xs text-[#57534E]">
+                              <span className="shrink-0 mt-0.5 h-4 w-4 rounded-full bg-rose-900/50 border border-rose-800/40 flex items-center justify-center text-[8px] font-black text-rose-300">!</span>
+                              <span><strong>{r.title}</strong>: {r.reason}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {/* Talking Points */}
+                    {prepData.suggestedTalkingPoints?.length > 0 && (
+                      <div>
+                        <p className="text-[10px] font-extrabold uppercase tracking-widest text-[#57534E] mb-2 mt-2">Suggested Talking Points</p>
+                        <ul className="space-y-1.5">
+                          {prepData.suggestedTalkingPoints.map((pt: string, i: number) => (
+                            <li key={i} className="flex items-start gap-2 text-xs text-[#57534E]">
+                              <span className="shrink-0 mt-0.5 h-4 w-4 rounded-full bg-violet-900/50 border border-violet-800/40 flex items-center justify-center text-[8px] font-black text-violet-300">{i + 1}</span>
+                              {pt}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {/* Action Recommendations */}
+                    {prepData.actionRecommendations?.length > 0 && (
+                      <div>
+                        <p className="text-[10px] font-extrabold uppercase tracking-widest text-[#57534E] mb-2 mt-2">Action Recommendations</p>
+                        <ul className="space-y-1.5">
+                          {prepData.actionRecommendations.map((pt: string, i: number) => (
+                            <li key={i} className="flex items-start gap-2 text-xs text-[#57534E]">
+                              <span className="shrink-0 mt-0.5 h-4 w-4 rounded-full bg-emerald-900/50 border border-emerald-800/40 flex items-center justify-center text-[8px] font-black text-emerald-300">{i + 1}</span>
+                              {pt}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {/* Attendees */}
+                    {prepData.attendees?.length > 0 && (
+                      <div>
+                        <p className="text-[10px] font-extrabold uppercase tracking-widest text-[#57534E] mb-2 mt-2">Attendees</p>
+                        <div className="space-y-2">
+                          {prepData.attendees.map((a: any) => {
+                            const health = a.relationshipHealth;
+                            const ringColor = health === "Strong" ? "border-emerald-500 text-emerald-300" : health === "At Risk" ? "border-rose-500 text-rose-300" : "border-slate-600 text-[#57534E]";
+                            return (
+                              <div key={a.email} className="flex items-center gap-3 px-3 py-2 rounded-xl bg-[#FAFAF9] border border-[#E8ECF0]">
+                                <div className={`h-8 w-8 shrink-0 rounded-full border-2 ${ringColor} flex items-center justify-center font-bold text-xs bg-slate-950/60`}>
+                                  {(a.name || a.email).charAt(0).toUpperCase()}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-xs font-semibold text-[#0C0A09] truncate">{a.name || a.email.split("@")[0]}</p>
+                                  <p className="text-[10px] text-[#57534E] truncate">{a.email}</p>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Open Commitments */}
+                    {prepData.openCommitments?.length > 0 && (
+                      <div>
+                        <p className="text-[10px] font-extrabold uppercase tracking-widest text-[#57534E] mb-2 mt-2">Open Commitments</p>
+                        <div className="space-y-1.5">
+                          {prepData.openCommitments.map((c: any, i: number) => (
+                            <div key={i} className="flex items-start gap-2 px-3 py-2 rounded-lg bg-amber-950/10 border border-amber-900/25">
+                              <div className="h-1.5 w-1.5 rounded-full bg-amber-400 mt-1.5 shrink-0" />
+                              <div className="min-w-0">
+                                <p className="text-xs text-[#57534E] leading-snug">{c.title}</p>
+                                {c.dueDate && (
+                                  <p className="text-[10px] text-[#57534E] mt-0.5">Due: {new Date(c.dueDate).toLocaleDateString([], { month: "short", day: "numeric" })}</p>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {/* Delete Event Button */}
+                    <div className="pt-4 mt-4 border-t border-[#E8ECF0]">
+                      <button
+                        onClick={() => prepEventId && handleDeleteEvent(prepEventId)}
+                        className="w-full py-2.5 rounded-xl font-bold text-sm text-rose-600 bg-rose-50 border border-rose-200 hover:bg-rose-100 hover:text-rose-700 transition-all flex justify-center items-center gap-2"
+                      >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                        Delete Event
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-48 gap-2">
+                    <svg className="w-8 h-8 text-slate-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <p className="text-xs text-[#57534E]">Could not load meeting prep.</p>
+                  </div>
+                )}
               </div>
             </motion.div>
           </>

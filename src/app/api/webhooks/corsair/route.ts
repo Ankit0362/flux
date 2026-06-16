@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { processWebhook } from "corsair";
 import { bootstrapSync, incrementalGmailSync } from "@/services/emailSync";
 import { incrementalCalendarSync } from "@/services/calendarSync";
+import { clearRelevantSnoozesForThread } from "@/services/inboxActions";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(request: NextRequest) {
@@ -24,7 +25,7 @@ export async function POST(request: NextRequest) {
 
     if (result.plugin === "gmail") {
       const data = (result as any).data;
-      console.log("[Webhook] Gmail event received:", data?.type, data?.emailAddress);
+      console.info("[Webhook] Gmail event received:", data?.type, data?.emailAddress);
 
       if (data && data.emailAddress) {
         const email = data.emailAddress;
@@ -44,6 +45,21 @@ export async function POST(request: NextRequest) {
                 console.error(`[Webhook] Incremental Gmail sync failed for ${email}:`, err);
               }
             );
+
+            // ── Auto-clear until_reply snoozes for inbound messages ─────────
+            // If a thread was snoozed with mode=until_reply, wake it up when
+            // a new inbound message arrives on that thread.
+            const externalThreadId = message.threadId ?? message.id;
+            if (externalThreadId) {
+              prisma.emailThread
+                .findFirst({ where: { externalId: externalThreadId, userId: user.id }, select: { id: true } })
+                .then((t) => {
+                  if (t) return clearRelevantSnoozesForThread(user.id, t.id);
+                })
+                .catch((err: unknown) => {
+                  console.warn(`[Webhook] Snooze clear failed for thread ${externalThreadId}:`, err);
+                });
+            }
           } else {
             // ── Fallback: missing historyId or message in event ────────────
             // This should not happen in normal operation but guards against
@@ -64,7 +80,7 @@ export async function POST(request: NextRequest) {
       }
     } else if (result.plugin === "googlecalendar") {
       const data = (result as any).data;
-      console.log("[Webhook] Google Calendar event received:", data);
+      console.info("[Webhook] Google Calendar event received:", data);
 
       if (data && data.channelId) {
         const tenantId = (result as any).tenantId;

@@ -1,14 +1,14 @@
 @import "tailwindcss";
 
 :root {
-  --background: #060913;
-  --foreground: #f8fafc;
-  --card-bg: rgba(13, 17, 33, 0.45);
-  --border-muted: rgba(255, 255, 255, 0.06);
-  --text-muted: #94a3b8;
-  --primary: #7c3aed;
-  --primary-hover: #6d28d9;
-  --accent: #c084fc;
+  --background: #000000;
+  --foreground: #FFFFFF;
+  --card-bg: rgba(15, 23, 42, 0.3);
+  --border-muted: rgba(255, 255, 255, 0.1);
+  --text-muted: #94A3B8;
+  --primary: #00F0FF;
+  --primary-hover: #00D4E0;
+  --accent: #B200FF;
 }
 
 @theme {
@@ -37,27 +37,48 @@ html {
 
 /* Landing page */
 .landing-shell {
-  --landing-ink: #f4f1ea;
-  --landing-muted: #969ba8;
+  --landing-ink: #FFFFFF;
+  --landing-muted: #94A3B8;
   --landing-line: rgba(255, 255, 255, 0.1);
   min-height: 100vh;
   overflow: hidden;
   position: relative;
   color: var(--landing-ink);
-  background:
-    radial-gradient(circle at 76% 22%, rgba(113, 92, 255, 0.17), transparent 28rem),
-    radial-gradient(circle at 18% 70%, rgba(0, 201, 167, 0.08), transparent 30rem),
-    #08090d;
+  background: #000000;
+}
+
+.glass-panel {
+  background: rgba(10, 10, 15, 0.6);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+.flashlight-border {
+  position: relative;
+}
+.flashlight-border::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: radial-gradient(800px circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(0, 240, 255, 0.4), transparent 40%);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
 }
 
 .landing-grid {
   position: absolute;
   inset: 0;
-  opacity: 0.22;
+  opacity: 0.6;
   pointer-events: none;
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+    linear-gradient(#E8ECF0 1px, transparent 1px),
+    linear-gradient(90deg, #E8ECF0 1px, transparent 1px);
   background-size: 72px 72px;
   mask-image: linear-gradient(to bottom, black, transparent 78%);
 }

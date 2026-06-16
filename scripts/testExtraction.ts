@@ -1,5 +1,5 @@
-import { extractCommitmentsFromMessage } from "./commitmentExtraction";
-import { prisma } from "../lib/db";
+import { extractCommitmentsFromMessage } from "../src/services/commitmentExtraction";
+import { prisma } from "../src/lib/db";
 
 // Mock email messages for test cases
 const MOCK_MESSAGES = [
@@ -99,7 +99,7 @@ async function runTests() {
     // If no argument, ask if they want to query database latest message OR run mock tests
     console.log("No specific message ID provided. Running mock test suite...");
     console.log("If you want to run on a database message, pass its ID or external ID as an argument:");
-    console.log("e.g. npx ts-node src/services/testExtraction.ts <message_id>\n");
+    console.log("e.g. npx ts-node scripts/testExtraction.ts <message_id>\n");
 
     // Check if we can get the latest email from database as well
     let latestMessage: any = null;
@@ -110,7 +110,7 @@ async function runTests() {
       if (latestMessage) {
         console.log(`Note: Most recent message in database has ID: "${latestMessage.id}"`);
       }
-    } catch (e) {
+    } catch (_e) {
       // Ignored if DB is not set up or configured
       console.log("(Note: Could not query latest message from DB. Make sure postgres is running if using DB.)");
     } finally {
@@ -129,8 +129,8 @@ async function runTests() {
         const results = await extractCommitmentsFromMessage(mockMsg);
         console.log("Extracted Commitments:");
         console.log(JSON.stringify(results, null, 2));
-      } catch (err: any) {
-        console.error("Extraction failed for test case:", err.message || err);
+      } catch (err: unknown) {
+        console.error("Extraction failed for test case:", (err instanceof Error ? err.message : String(err)) || err);
       }
     }
     console.log("\n=========================================");

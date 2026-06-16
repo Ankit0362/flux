@@ -6,10 +6,14 @@ export interface MeetingPrepDTO {
   eventId: string;
   title: string;
   startAt: string;
+  /** Minutes until meeting starts; negative means it has already started */
+  meetingStartsInMinutes: number;
   attendees: Array<{
     name: string | null;
     email: string;
     relationshipHealth: string | null;
+    /** 0-100 relationship strength score */
+    relationshipScore: number | null;
     openCommitments: number;
   }>;
   relevantCommitments: Array<{
@@ -23,7 +27,12 @@ export interface MeetingPrepDTO {
     lastMessageAt: string | null;
     followUpNeeded: boolean | null;
   }>;
+  /** AI-generated concise meeting brief */
   aiSummary: string;
+  /** 3-5 suggested talking points for the meeting */
+  suggestedTalkingPoints: string[];
+  /** Key discussion topics inferred from commitments and recent threads */
+  discussionTopics: string[];
 }
 
 export interface AgendaItemDTO {
@@ -47,6 +56,8 @@ export interface ConflictDTO {
 }
 
 export async function generateMeetingPrep(userId: string, eventId: string): Promise<MeetingPrepDTO> {
+  const now = new Date();
+
   const event = await prisma.calendarEvent.findUnique({
     where: { id: eventId, userId },
     include: {
@@ -59,12 +70,18 @@ export async function generateMeetingPrep(userId: string, eventId: string): Prom
 
   if (!event) throw new Error("Event not found");
 
-  // Gather attendee context
+  // Compute minutes until meeting starts
+  const meetingStartsInMinutes = Math.round(
+    (event.startAt.getTime() - now.getTime()) / 60_000
+  );
+
+  // Gather attendee context with relationship scores
   const attendeeContext = event.attendees.map(a => ({
     name: a.name,
     email: a.email,
     relationshipHealth: a.relationshipHealth,
-    openCommitments: a.openCommitments
+    relationshipScore: a.relationshipScore,
+    openCommitments: a.openCommitments,
   }));
 
   // Find recent email threads with these attendees
@@ -86,37 +103,39 @@ export async function generateMeetingPrep(userId: string, eventId: string): Prom
     select: { subject: true, lastMessageAt: true, followUpNeeded: true, snippet: true }
   });
 
-  // Generate AI Summary using Gemini
+  // Build AI prompt requesting structured prep
   const genAI = getGenAIClient();
+  const prompt = `You are ChiefOS, an executive assistant preparing a meeting brief.
+Return JSON only matching this schema:
+{"aiSummary":"string (3-bullet narrative, max 150 words)","suggestedTalkingPoints":["string (3-5 items)"],"discussionTopics":["string (2-4 items)"]}
 
-  const prompt = `
-You are ChiefOS, an executive assistant preparing a meeting brief.
-Meeting Title: ${event.title}
-Time: ${event.startAt.toISOString()}
+Meeting: ${event.title}
+Time: ${event.startAt.toISOString()} (starts in ${meetingStartsInMinutes} minutes)
 
 Attendees:
 ${JSON.stringify(attendeeContext, null, 2)}
 
-Open Commitments with these attendees:
+Open Commitments:
 ${JSON.stringify(event.commitments.map(c => ({ title: c.title, dueDate: c.dueDate })), null, 2)}
 
-Recent related email threads:
-${JSON.stringify(recentThreads, null, 2)}
-
-Write a concise, 3-bullet-point briefing for this meeting. Include:
-1. Context on who the user is meeting with (note any at-risk relationships).
-2. Key action items or commitments to review.
-3. Relevant context from recent emails if any.
-Keep it strictly under 150 words.
-`;
+Recent Threads:
+${JSON.stringify(recentThreads.map(t => ({ subject: t.subject, followUpNeeded: t.followUpNeeded, snippet: t.snippet })), null, 2)}`;
 
   let aiSummary = "Could not generate AI summary at this time.";
+  let suggestedTalkingPoints: string[] = [];
+  let discussionTopics: string[] = [];
+
   try {
     const text = await callGeminiWithTimeout(genAI, {
       model: "gemini-2.5-flash",
-      contents: prompt
+      contents: prompt,
     });
-    aiSummary = text || aiSummary;
+    // Try to parse as structured JSON first
+    const cleaned = (text || "").trim().replace(/^```json\s*/i, "").replace(/```\s*$/, "").trim();
+    const parsed = JSON.parse(cleaned);
+    if (parsed?.aiSummary) aiSummary = parsed.aiSummary;
+    if (Array.isArray(parsed?.suggestedTalkingPoints)) suggestedTalkingPoints = parsed.suggestedTalkingPoints;
+    if (Array.isArray(parsed?.discussionTopics)) discussionTopics = parsed.discussionTopics;
   } catch (error) {
     console.error("Failed to generate meeting prep summary with Gemini", error);
   }
@@ -125,6 +144,7 @@ Keep it strictly under 150 words.
     eventId: event.id,
     title: event.title,
     startAt: event.startAt.toISOString(),
+    meetingStartsInMinutes,
     attendees: attendeeContext,
     relevantCommitments: event.commitments.map(c => ({
       id: c.id,
@@ -137,7 +157,9 @@ Keep it strictly under 150 words.
       lastMessageAt: t.lastMessageAt ? t.lastMessageAt.toISOString() : null,
       followUpNeeded: t.followUpNeeded
     })),
-    aiSummary
+    aiSummary,
+    suggestedTalkingPoints,
+    discussionTopics,
   };
 }
 

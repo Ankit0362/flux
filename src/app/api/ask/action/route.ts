@@ -45,6 +45,25 @@ const CreateEventSchema = z.object({
   path: ["endAt"],
 });
 
+const CreateEventAndSendEmailSchema = CreateEventSchema.extend({
+  to: z.array(z.string().email()).min(1).max(10),
+  subject: z.string().min(1).max(998),
+  body: z.string().min(1).max(10000),
+  commitmentId: z.string().optional(),
+});
+
+const RescheduleEventSchema = z.object({
+  eventId: z.string().min(1).max(255),
+  startAt: z.string().datetime(),
+  endAt: z.string().datetime(),
+});
+
+const CreateCommitmentSchema = z.object({
+  title: z.string().min(1).max(500),
+  dueDate: z.string().datetime().optional().nullable(),
+  contactEmail: z.string().email().optional().nullable(),
+});
+
 // ─── MIME helpers ─────────────────────────────────────────────────────────────
 
 function buildMIMEMessage(opts: {
@@ -88,7 +107,7 @@ async function handleSendEmail(
   const client = corsair.withTenant(userId) as any;
   const result = await client.gmail.api.messages.send({ raw });
 
-  console.log(`[AskAction] send_email sent for user ${userId}, messageId=${result?.id}`);
+  console.info(`[AskAction] send_email sent for user ${userId}, messageId=${result?.id}`);
   return NextResponse.json({ success: true, messageId: result?.id });
 }
 
@@ -140,7 +159,7 @@ async function handleReplyToThread(
     threadId: thread.externalId,
   });
 
-  console.log(`[AskAction] reply_to_thread sent for user ${userId}, threadId=${thread.externalId}`);
+  console.info(`[AskAction] reply_to_thread sent for user ${userId}, threadId=${thread.externalId}`);
   return NextResponse.json({ success: true, messageId: result?.id });
 }
 
@@ -165,11 +184,112 @@ async function handleCreateCalendarEvent(
     location,
   });
 
-  console.log(`[AskAction] create_calendar_event for user ${userId}, eventId=${event?.id}`);
+  console.info(`[AskAction] create_calendar_event for user ${userId}, eventId=${event?.id}`);
   if (!event) {
     return NextResponse.json({ error: "Failed to create calendar event." }, { status: 500 });
   }
   return NextResponse.json({ success: true, event });
+}
+
+async function handleCreateEventAndSendEmail(
+  userId: string,
+  userEmail: string,
+  rawPayload: unknown
+): Promise<NextResponse> {
+  const parseResult = CreateEventAndSendEmailSchema.safeParse(rawPayload);
+  if (!parseResult.success) {
+    return NextResponse.json({ error: "Invalid payload", details: parseResult.error.format() }, { status: 400 });
+  }
+
+  const { title, startAt, endAt, attendees, description, location, to, subject, body, commitmentId } = parseResult.data;
+  const event = await createCalendarEvent(userId, userEmail, {
+    title,
+    startAt,
+    endAt,
+    attendees,
+    description,
+    location,
+  });
+
+  const raw = buildMIMEMessage({ from: userEmail, to, subject, body });
+  const client = corsair.withTenant(userId) as any;
+  const sent = await client.gmail.api.messages.send({ raw });
+
+  if (commitmentId) {
+    await prisma.commitment.updateMany({
+      where: { id: commitmentId, userId },
+      data: { calendarEventId: event?.id, updatedAt: new Date() },
+    });
+  }
+
+  return NextResponse.json({ success: true, event, messageId: sent?.id });
+}
+
+async function handleRescheduleCalendarEvent(
+  userId: string,
+  userEmail: string,
+  rawPayload: unknown
+): Promise<NextResponse> {
+  const parseResult = RescheduleEventSchema.safeParse(rawPayload);
+  if (!parseResult.success) {
+    return NextResponse.json({ error: "Invalid payload", details: parseResult.error.format() }, { status: 400 });
+  }
+
+  const { eventId, startAt, endAt } = parseResult.data;
+
+  const event = await prisma.calendarEvent.findFirst({
+    where: { id: eventId, userId }
+  });
+  if (!event) return NextResponse.json({ error: "Event not found" }, { status: 404 });
+
+  const client = corsair.withTenant(userId) as any;
+  await client.calendar.api.events.patch({
+    calendarId: "primary",
+    eventId: event.externalId,
+    requestBody: {
+      start: { dateTime: startAt },
+      end: { dateTime: endAt },
+    }
+  });
+
+  await prisma.calendarEvent.update({
+    where: { id: eventId },
+    data: { startAt: new Date(startAt), endAt: new Date(endAt) }
+  });
+
+  return NextResponse.json({ success: true, eventId });
+}
+
+async function handleCreateCommitment(
+  userId: string,
+  rawPayload: unknown
+): Promise<NextResponse> {
+  const parseResult = CreateCommitmentSchema.safeParse(rawPayload);
+  if (!parseResult.success) {
+    return NextResponse.json({ error: "Invalid payload", details: parseResult.error.format() }, { status: 400 });
+  }
+
+  const { title, dueDate, contactEmail } = parseResult.data;
+
+  let contactId = null;
+  if (contactEmail) {
+    const contact = await prisma.contact.findFirst({ where: { userId, email: contactEmail.toLowerCase() } });
+    contactId = contact?.id;
+  }
+
+  const commitment = await prisma.commitment.create({
+    data: {
+      userId,
+      title,
+      dueDate: dueDate ? new Date(dueDate) : null,
+      status: "PENDING",
+      contactId,
+      riskLevel: "MEDIUM",
+      riskScore: 50
+    }
+  });
+
+  return NextResponse.json({ success: true, commitment });
 }
 
 // ─── Route Handler ────────────────────────────────────────────────────────────
@@ -209,6 +329,12 @@ export async function POST(request: NextRequest) {
         return await handleReplyToThread(userId, user.email, payload);
       case "create_calendar_event":
         return await handleCreateCalendarEvent(userId, user.email, payload);
+      case "create_event_and_send_email":
+        return await handleCreateEventAndSendEmail(userId, user.email, payload);
+      case "reschedule_calendar_event":
+        return await handleRescheduleCalendarEvent(userId, user.email, payload);
+      case "create_commitment":
+        return await handleCreateCommitment(userId, payload);
       default:
         return NextResponse.json({ error: `Unknown actionType: ${actionType}` }, { status: 400 });
     }

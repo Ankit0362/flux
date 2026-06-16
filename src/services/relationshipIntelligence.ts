@@ -270,8 +270,12 @@ export async function updateUserRelationships(userId: string): Promise<void> {
     }
   }
 
-  // Execute all updates in a single transaction instead of N sequential writes
+  // Execute all updates in chunks without transaction to avoid timeouts
   if (updates.length > 0) {
-    await prisma.$transaction(updates);
+    const chunkSize = 10;
+    for (let i = 0; i < updates.length; i += chunkSize) {
+      const chunk = updates.slice(i, i + chunkSize);
+      await Promise.all(chunk);
+    }
   }
 }

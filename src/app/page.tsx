@@ -1,180 +1,89 @@
+"use client";
+
 import Link from "next/link";
-
-const signals = [
-  "Gmail",
-  "Calendar",
-  "Commitments",
-  "Relationships",
-];
-
-const outcomes = [
-  {
-    label: "Commitments",
-    value: "Every promise has an owner",
-    copy: "ChiefOS extracts asks, promises, names, and dates from email so follow-through is tracked without manual upkeep.",
-  },
-  {
-    label: "Follow-ups",
-    value: "Stalled conversations surface early",
-    copy: "Unanswered requests and aging threads rise into view before they become relationship debt.",
-  },
-  {
-    label: "Briefings",
-    value: "Meetings arrive with context",
-    copy: "Calendar events are paired with recent messages, open decisions, and the preparation that matters.",
-  },
-  {
-    label: "Relationships",
-    value: "The people system stays current",
-    copy: "Relationship health, last touch, and open obligations stay visible for the people who move your work forward.",
-  },
-];
+import { motion } from "framer-motion";
+import NeuralCore from "@/components/NeuralCore";
 
 export default function Home() {
   return (
-    <main className="landing-shell">
-      <div className="landing-ambient" aria-hidden="true" />
-      <nav className="landing-nav">
-        <Link href="/" className="brand-lockup" aria-label="ChiefOS home">
-          <span className="brand-mark">C</span>
-          <span>ChiefOS</span>
+    <main className="min-h-[200vh] bg-black text-white relative">
+      {/* 3D Background - Fixed so it stays while scrolling */}
+      <div className="fixed inset-0 z-0">
+        <NeuralCore />
+        {/* Vignette overlay to fade out edges */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,black_100%)] pointer-events-none"></div>
+      </div>
+
+      <motion.nav 
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 1, duration: 1 }}
+        className="w-full h-24 flex items-center justify-between px-8 relative z-20"
+      >
+        <Link href="/" className="flex items-center gap-4 text-white hover:text-[#00F0FF] transition-colors">
+          <div className="w-10 h-10 border border-white/20 flex items-center justify-center font-serif text-lg bg-black/50 backdrop-blur-md">
+            C
+          </div>
+          <span className="font-serif text-2xl tracking-tight">ChiefOS</span>
         </Link>
-        <div className="nav-links">
-          <a href="#brief">Daily brief</a>
-          <a href="#system">System</a>
-          <a href="#trust">Trust</a>
-        </div>
-        <Link href="/api/auth/signin" className="nav-cta">
-          Enter workspace <span>-&gt;</span>
+        <Link href="/login" className="px-6 py-2 border border-[#00F0FF]/50 text-[#00F0FF] text-sm uppercase tracking-widest hover:bg-[#00F0FF]/10 transition-colors backdrop-blur-md">
+          Enter Workspace
         </Link>
-      </nav>
+      </motion.nav>
 
-      <section className="hero-stage">
-        <div className="hero-copy">
-          <div className="eyebrow">
-            <span className="status-dot" />
-            Private executive intelligence
-          </div>
-          <h1>
-            Your inbox becomes an operating system.
-          </h1>
-          <p>
-            ChiefOS turns email, calendar, commitments, and relationships into
-            one prioritized daily brief, so the important work is visible before
-            it is urgent.
-          </p>
-          <div className="hero-actions">
-            <Link href="/api/auth/signin" className="primary-action">
-              Connect your workspace <span>-&gt;</span>
-            </Link>
-            <Link href="/demo" className="secondary-action">
-              Watch the brief
-            </Link>
-          </div>
-          <div className="trust-row" id="trust">
-            <span>Private by design</span>
-            <span>Human-approved actions</span>
-            <span>Built around Gmail and calendar</span>
-          </div>
-        </div>
+      {/* Hero Section */}
+      <section className="h-screen flex flex-col justify-center items-center text-center relative z-10 px-6">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5, duration: 1 }}
+          className="text-[#00F0FF] text-sm font-mono uppercase tracking-[0.3em] mb-6 flex items-center justify-center gap-3"
+        >
+          <span className="w-2 h-2 rounded-full bg-[#00F0FF] animate-pulse"></span>
+          The Future of Work is Spatial
+        </motion.div>
+        
+        <motion.h1 
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.7, duration: 1 }}
+          className="font-serif text-6xl md:text-[8rem] leading-[0.9] tracking-tighter mb-8 text-transparent bg-clip-text bg-gradient-to-br from-white via-white to-white/30"
+        >
+          Neural <br/>Intelligence.
+        </motion.h1>
+        
+        <motion.p 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 1.2, duration: 1 }}
+          className="text-xl md:text-2xl text-[#94A3B8] font-light max-w-2xl leading-relaxed"
+        >
+          ChiefOS intercepts your emails and calendar, extracting open loops and commitments into a floating 3D spatial dashboard. Scroll down to discover.
+        </motion.p>
+      </section>
 
-        <div className="command-table" aria-label="3D command table turning work signals into a daily brief">
-          <div className="table-glow" />
-          <div className="signal-ring ring-one" />
-          <div className="signal-ring ring-two" />
-          <div className="signal-ring ring-three" />
-
-          {signals.map((signal, index) => (
-            <div key={signal} className={`signal-chip signal-chip-${index + 1}`}>
-              <span>Signal</span>
-              <strong>{signal}</strong>
+      {/* Scrolling Content over the 3D Core */}
+      <section className="min-h-screen relative z-10 bg-black/40 backdrop-blur-sm border-t border-white/10 pt-32 pb-32">
+        <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-8">
+          {[
+            { id: "01", title: "Extract", desc: "Our neural core automatically extracts action items and commitments from your raw email stream." },
+            { id: "02", title: "Synthesize", desc: "Calendar events are paired with relationship intelligence and past correspondence." },
+            { id: "03", title: "Act", desc: "Transition into our hyper-usable, ultra-premium 2D workspace to knock out your daily brief." }
+          ].map((item, i) => (
+            <div key={item.id} className="p-12 border border-white/10 bg-black/60 backdrop-blur-md rounded-lg hover:border-[#00F0FF]/50 transition-colors">
+              <div className="text-[#00F0FF] font-mono text-xl mb-6">{item.id}</div>
+              <h3 className="text-3xl font-serif mb-4 text-white">{item.title}</h3>
+              <p className="text-[#94A3B8] leading-relaxed">{item.desc}</p>
             </div>
           ))}
-
-          <div className="brief-core">
-            <div className="core-topline">
-              <span>ChiefOS</span>
-              <span>11 Jun</span>
-            </div>
-            <div className="core-title">Daily command brief</div>
-            <div className="brief-priority urgent">
-              <span>01</span>
-              <div>
-                <strong>Return the revised proposal</strong>
-                <small>Due today - Sarah Chen</small>
-              </div>
-            </div>
-            <div className="brief-priority">
-              <span>02</span>
-              <div>
-                <strong>Prepare board operating review</strong>
-                <small>4 open decisions</small>
-              </div>
-            </div>
-            <div className="brief-priority">
-              <span>03</span>
-              <div>
-                <strong>Follow up with Maya</strong>
-                <small>Waiting 6 days</small>
-              </div>
-            </div>
-          </div>
-
-          <div className="risk-panel">
-            <span>Risk</span>
-            <strong>2 commitments need attention</strong>
-          </div>
-          <div className="context-panel">
-            <span>Context</span>
-            <strong>Meeting prep ready</strong>
-          </div>
-          <div className="table-base" />
+        </div>
+        
+        <div className="text-center mt-32">
+          <Link href="/login" className="inline-flex px-12 py-6 bg-white text-black text-sm uppercase tracking-[0.2em] font-bold hover:bg-[#00F0FF] transition-colors">
+            Experience the Workspace
+          </Link>
         </div>
       </section>
-
-      <section className="brief-proof" id="brief">
-        <div className="proof-kicker">The daily brief</div>
-        <div className="proof-copy">
-          <h2>Calm, ranked, and ready before your day starts.</h2>
-          <p>
-            Instead of another inbox to manage, ChiefOS creates a small daily
-            operating picture: what you promised, who is waiting, what meetings
-            need preparation, and what can safely wait.
-          </p>
-        </div>
-        <div className="proof-metrics">
-          <div><strong>01</strong><span>Prioritized view</span></div>
-          <div><strong>04</strong><span>Connected work signals</span></div>
-          <div><strong>00</strong><span>Important promises buried</span></div>
-        </div>
-      </section>
-
-      <section className="principles" id="system">
-        <div className="section-heading">
-          <span>One dependable system</span>
-          <h2>The context behind every decision, kept in order.</h2>
-        </div>
-        <div className="feature-grid">
-          {outcomes.map((outcome, index) => (
-            <article key={outcome.label} className="feature-card">
-              <span>0{index + 1} / {outcome.label}</span>
-              <h3>{outcome.value}</h3>
-              <p>{outcome.copy}</p>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section className="closing-statement">
-        <span>ChiefOS</span>
-        <h2>Keep your word. Keep your relationships. Keep your focus.</h2>
-        <Link href="/api/auth/signin">Connect your workspace <span>-&gt;</span></Link>
-      </section>
-
-      <footer className="landing-footer">
-        <span>ChiefOS 2026</span>
-        <span>For operators whose work runs through relationships.</span>
-      </footer>
     </main>
   );
 }

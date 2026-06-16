@@ -19,9 +19,9 @@ export function useCommitments() {
       }
       const data = await res.json();
       setCommitments(data.commitments || []);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Failed to load commitments:", err);
-      setError(err.message || "Something went wrong fetching commitments");
+      setError((err instanceof Error ? err.message : String(err)) || "Something went wrong fetching commitments");
     } finally {
       setLoading(false);
     }
@@ -64,9 +64,9 @@ export function useCommitments() {
       setCommitments((prev) =>
         prev.map((c) => (c.id === id ? data.commitment : c))
       );
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(`Failed to update commitment ${id} status:`, err);
-      setError(err.message || "Failed to update status");
+      setError((err instanceof Error ? err.message : String(err)) || "Failed to update status");
       // Rollback to previous state
       setCommitments(previousCommitments);
     } finally {
@@ -108,9 +108,9 @@ export function useCommitments() {
       fetchCommitments();
 
       return data.count ?? 0;
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(`Failed to extract commitments for thread ${threadId}:`, err);
-      setError(err.message || "Failed to extract commitments");
+      setError((err instanceof Error ? err.message : String(err)) || "Failed to extract commitments");
       throw err;
     } finally {
       setLoading(false);
@@ -118,6 +118,7 @@ export function useCommitments() {
   }, [fetchCommitments]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchCommitments();
   }, [fetchCommitments]);
 
