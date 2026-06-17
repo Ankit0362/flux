@@ -56,7 +56,7 @@ export default function Home() {
           transition={{ delay: 1.2, duration: 1 }}
           className="text-xl md:text-2xl text-[#94A3B8] font-light max-w-3xl leading-relaxed"
         >
-          Flux connects to your Google Workspace to securely read your Gmail and Calendar. We automatically extract action items, summarize emails, and prepare you for upcoming meetings in an intelligent, unified dashboard.
+          Fluxmail connects to your Google Workspace to securely read your Gmail and Calendar. We automatically extract action items, summarize emails, and prepare you for upcoming meetings in an intelligent, unified dashboard.
         </motion.p>
       </section>
 
@@ -64,9 +64,9 @@ export default function Home() {
       <section className="min-h-screen relative z-10 bg-black/40 backdrop-blur-sm border-t border-white/10 pt-32 pb-32">
         <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-8">
           {[
-            { id: "01", title: "Email Triage", desc: "Flux securely reads your Gmail to detect open loops, commitments, and action items, so you never drop the ball on an important thread." },
+            { id: "01", title: "Email Triage", desc: "Fluxmail securely reads your Gmail to detect open loops, commitments, and action items, so you never drop the ball on an important thread." },
             { id: "02", title: "Calendar Intelligence", desc: "Syncs with Google Calendar to provide relationship intelligence, past correspondence context, and summaries before your meetings begin." },
-            { id: "03", title: "Privacy First", desc: "Your data is yours. Flux strictly requests read-only permissions necessary to synthesize your daily brief and never shares your personal information." }
+            { id: "03", title: "Privacy First", desc: "Your data is yours. Fluxmail strictly requests read-only permissions necessary to synthesize your daily brief and never shares your personal information." }
           ].map((item, i) => (
             <div key={item.id} className="p-12 border border-white/10 bg-black/60 backdrop-blur-md rounded-lg hover:border-[#00F0FF]/50 transition-colors">
               <div className="text-[#00F0FF] font-mono text-xl mb-6">{item.id}</div>
@@ -76,10 +76,25 @@ export default function Home() {
           ))}
         </div>
         
-        <div className="text-center mt-32 mb-32">
+        <div className="text-center mt-32 mb-16">
           <Link href="/login" className="inline-flex px-12 py-6 bg-white text-black text-sm uppercase tracking-[0.2em] font-bold hover:bg-[#00F0FF] transition-colors">
             Experience the Workspace
           </Link>
+        </div>
+
+        {/* Explicit Google Verification / Data Usage Section */}
+        <div className="max-w-4xl mx-auto px-6 mb-32 text-left bg-white/5 border border-white/10 p-8 rounded-xl backdrop-blur-md">
+          <h2 className="text-2xl font-serif text-white mb-4">How Fluxmail uses your Google Data</h2>
+          <p className="text-[#94A3B8] mb-4 leading-relaxed">
+            Fluxmail is an AI-powered executive assistant designed to organize your professional life. To provide this service, our application requires access to your Google Account (specifically Gmail and Google Calendar).
+          </p>
+          <ul className="list-disc pl-5 text-[#94A3B8] space-y-2 mb-4 leading-relaxed">
+            <li><strong>Gmail Access (Read-Only):</strong> We analyze your emails to automatically identify and extract action items, commitments, and important follow-ups so they can be displayed on your dashboard.</li>
+            <li><strong>Google Calendar Access (Read-Only):</strong> We read your calendar events to generate meeting briefs, summarize upcoming calls, and provide context on the people you are meeting with.</li>
+          </ul>
+          <p className="text-[#94A3B8] leading-relaxed">
+            <strong>Privacy Commitment:</strong> Fluxmail only requests the minimum scopes necessary to function properly. We do not sell your personal data, and your email/calendar content is exclusively used to power the features within your personal dashboard.
+          </p>
         </div>
 
         {/* Footer for Compliance */}
