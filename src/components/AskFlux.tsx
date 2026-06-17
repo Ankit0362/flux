@@ -16,6 +16,40 @@ const SUGGESTED_QUERIES = [
   "Reply to the thread with the most recent activity",
 ];
 
+const QUICK_PROMPTS: { category: string; color: string; icon: string; prompts: string[] }[] = [
+  {
+    category: "Today's Focus",
+    color: "text-amber-400",
+    icon: "M12 3v1m0 16v1m8.66-9h-1M4.34 12h-1m15.07-6.07l-.71.71M6.34 17.66l-.71.71m12.73 0l-.71-.71M6.34 6.34l-.71-.71",
+    prompts: [
+      "What should I focus on today?",
+      "Summarize my most urgent commitments",
+      "What are my upcoming deadlines this week?",
+    ],
+  },
+  {
+    category: "Inbox & Commitments",
+    color: "text-sky-400",
+    icon: "M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0a2 2 0 01-2 2H6a2 2 0 01-2-2m16 0V9a2 2 0 00-2-2H6a2 2 0 00-2 2v6",
+    prompts: [
+      "Reply to the thread with the most recent activity",
+      "Which commitments are overdue?",
+      "Draft a follow-up for my most overdue item",
+    ],
+  },
+  {
+    category: "Relationships",
+    color: "text-rose-400",
+    icon: "M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z",
+    prompts: [
+      "Which relationships need attention?",
+      "Who should I follow up with this week?",
+      "Schedule a sync with my most at-risk contact",
+    ],
+  },
+];
+
+
 const THINKING_STEPS = [
   "Connecting to your inbox...",
   "Querying commitments database...",
@@ -826,26 +860,34 @@ export default function AskFlux() {
                     exit={{ opacity: 0, y: -10 }}
                     className="space-y-4"
                   >
-                    {/* Suggested queries */}
-                    <div className="space-y-1.5">
+                    {/* Grouped quick prompts */}
+                    <div className="space-y-3">
                       <p className="text-[9px] font-bold uppercase tracking-widest text-slate-500 px-1">
-                        Suggested Questions
+                        Quick Actions
                       </p>
-                      <div className="grid gap-1.5">
-                        {SUGGESTED_QUERIES.map((q, i) => (
-                          <button
-                            key={i}
-                            id={`ask-suggestion-${i}`}
-                            onClick={() => handleSubmit(q)}
-                            className="text-left text-[11px] font-medium text-slate-300 hover:text-white px-3 py-2.5 rounded-xl bg-slate-900/40 hover:bg-slate-800/60 border border-white/5 hover:border-white/10 transition-all flex items-center gap-2.5 group"
-                          >
-                            <svg className="w-3 h-3 text-amber-500 shrink-0 group-hover:text-amber-300 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                      {QUICK_PROMPTS.map((group) => (
+                        <div key={group.category}>
+                          <div className="flex items-center gap-1.5 px-1 mb-1.5">
+                            <svg className={`w-3 h-3 ${group.color}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={group.icon} />
                             </svg>
-                            {q}
-                          </button>
-                        ))}
-                      </div>
+                            <span className={`text-[9px] font-extrabold uppercase tracking-widest ${group.color}`}>{group.category}</span>
+                          </div>
+                          <div className="grid gap-1">
+                            {group.prompts.map((q, i) => (
+                              <button
+                                key={i}
+                                id={`ask-suggestion-${group.category}-${i}`}
+                                onClick={() => handleSubmit(q)}
+                                className="text-left text-[11px] font-medium text-slate-300 hover:text-white px-3 py-2 rounded-lg bg-slate-900/30 hover:bg-slate-800/60 border border-white/5 hover:border-white/10 transition-all flex items-center gap-2 group"
+                              >
+                                <span className="h-1.5 w-1.5 rounded-full bg-slate-600 group-hover:bg-amber-400 transition-colors shrink-0" />
+                                {q}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </motion.div>
                 )}
