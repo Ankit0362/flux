@@ -30,15 +30,13 @@ export function Sidebar({
       <div>
         {/* Logo */}
         <div className="p-6 border-b border-[#E8ECF0] flex items-center gap-3">
-          <div className="h-8 w-8 rounded-lg bg-[#0C0A09] flex items-center justify-center font-extrabold text-white shadow-lg shadow-amber-900/30">
-            C
-          </div>
+          <img src="/shortlogo.png" alt="Flux Icon" className="h-8 w-8 object-contain" />
           <div>
-            <span className="font-extrabold text-lg text-[#0C0A09] font-serif">
-              Flux
+            <span className="font-extrabold text-lg text-[#0C0A09] font-sans tracking-wide">
+              FLUX
             </span>
-            <span className="text-[10px] block text-[#57534E] tracking-wider font-semibold uppercase">
-              COGNITIVE LAYER
+            <span className="text-[9px] block text-[#C5A06D] tracking-widest font-bold uppercase">
+              AI CHIEF OF STAFF
             </span>
           </div>
         </div>

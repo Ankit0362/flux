@@ -20,11 +20,9 @@ export default function Home() {
         transition={{ delay: 1, duration: 1 }}
         className="w-full h-24 flex items-center justify-between px-8 relative z-20"
       >
-        <Link href="/" className="flex items-center gap-4 text-white hover:text-[#00F0FF] transition-colors">
-          <div className="w-10 h-10 border border-white/20 flex items-center justify-center font-serif text-lg bg-black/50 backdrop-blur-md">
-            C
-          </div>
-          <span className="font-serif text-2xl tracking-tight">Flux</span>
+        <Link href="/" className="flex items-center gap-4 text-white hover:text-[#C5A06D] transition-colors">
+          <img src="/shortlogo.png" alt="Flux Icon" className="h-10 w-10 object-contain" />
+          <span className="font-sans text-2xl tracking-wide font-extrabold uppercase">Flux</span>
         </Link>
         <Link href="/login" className="px-6 py-2 border border-[#00F0FF]/50 text-[#00F0FF] text-sm uppercase tracking-widest hover:bg-[#00F0FF]/10 transition-colors backdrop-blur-md">
           Enter Workspace

@@ -55,45 +55,33 @@ export default function LoginPage() {
         >
           {/* Logo */}
           <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "2rem" }}>
-            <div
-              style={{
-                height: "40px",
-                width: "40px",
-                borderRadius: "10px",
-                background: "linear-gradient(135deg, #b45309, #78716c)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontWeight: 900,
-                fontSize: "18px",
-                color: "white",
-                boxShadow: "0 4px 20px rgba(180,83,9,0.35)",
-              }}
-            >
-              C
-            </div>
+            <img 
+              src="/shortlogo.png" 
+              alt="Flux Icon" 
+              style={{ height: "40px", width: "40px", objectFit: "contain" }} 
+            />
             <div>
               <div
                 style={{
                   fontWeight: 800,
-                  fontSize: "18px",
-                  background: "linear-gradient(90deg, #fbbf24, #d6d3d1)",
-                  WebkitBackgroundClip: "text",
-                  WebkitTextFillColor: "transparent",
+                  fontSize: "20px",
+                  color: "#f1f5f9",
+                  letterSpacing: "0.05em",
+                  textTransform: "uppercase",
                 }}
               >
-                Flux
+                FLUX
               </div>
               <div
                 style={{
                   fontSize: "10px",
-                  color: "#64748b",
-                  fontWeight: 600,
-                  letterSpacing: "0.1em",
+                  color: "#C5A06D",
+                  fontWeight: 700,
+                  letterSpacing: "0.15em",
                   textTransform: "uppercase",
                 }}
               >
-                Cognitive Layer
+                AI CHIEF OF STAFF
               </div>
             </div>
           </div>
