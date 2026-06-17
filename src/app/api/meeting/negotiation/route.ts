@@ -81,7 +81,7 @@ export async function PUT(request: NextRequest) {
       startAt: selectedSlot.startAt,
       endAt: selectedSlot.endAt,
       attendees,
-      description: `Scheduled from ChiefOS negotiation loop for: ${thread.subject}`,
+      description: `Scheduled from Flux negotiation loop for: ${thread.subject}`,
     });
 
     const subject = thread.subject.startsWith("Re:") ? thread.subject : `Re: ${thread.subject}`;
@@ -98,7 +98,7 @@ export async function PUT(request: NextRequest) {
           ...(thread.metadata && typeof thread.metadata === "object" && !Array.isArray(thread.metadata)
             ? thread.metadata
             : {}),
-          chiefosNegotiation: {
+          fluxNegotiation: {
             eventId: event?.id,
             sentMessageId: sent?.id,
             completedAt: new Date().toISOString(),

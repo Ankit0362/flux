@@ -24,7 +24,7 @@ export default function Home() {
           <div className="w-10 h-10 border border-white/20 flex items-center justify-center font-serif text-lg bg-black/50 backdrop-blur-md">
             C
           </div>
-          <span className="font-serif text-2xl tracking-tight">ChiefOS</span>
+          <span className="font-serif text-2xl tracking-tight">Flux</span>
         </Link>
         <Link href="/login" className="px-6 py-2 border border-[#00F0FF]/50 text-[#00F0FF] text-sm uppercase tracking-widest hover:bg-[#00F0FF]/10 transition-colors backdrop-blur-md">
           Enter Workspace
@@ -58,7 +58,7 @@ export default function Home() {
           transition={{ delay: 1.2, duration: 1 }}
           className="text-xl md:text-2xl text-[#94A3B8] font-light max-w-2xl leading-relaxed"
         >
-          ChiefOS intercepts your emails and calendar, extracting open loops and commitments into a floating 3D spatial dashboard. Scroll down to discover.
+          Flux intercepts your emails and calendar, extracting open loops and commitments into a floating 3D spatial dashboard. Scroll down to discover.
         </motion.p>
       </section>
 

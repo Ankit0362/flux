@@ -14,7 +14,7 @@ export interface SourceEmailDTO {
  * TS-07: Prisma `JsonValue` Metadata Typing
  *
  * Prisma types JSON columns as `JsonValue` (which can be string, number, object, array, or null).
- * In ChiefOS, the `Commitment.metadata` field strictly adheres to this interface.
+ * In Flux, the `Commitment.metadata` field strictly adheres to this interface.
  * When reading from Prisma, always cast or parse it through a safe helper
  * (e.g., `parseCommitmentMetadata`) rather than using `as any`.
  */

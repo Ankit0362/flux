@@ -209,7 +209,7 @@ export default function ContactDetailPage({
             </div>
             <div>
               <span className="font-extrabold text-lg bg-gradient-to-r from-amber-400 to-stone-300 bg-clip-text text-transparent">
-                ChiefOS
+                Flux
               </span>
               <span className="text-[10px] block text-slate-500 tracking-wider font-semibold uppercase">
                 COGNITIVE LAYER

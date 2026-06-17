@@ -295,8 +295,8 @@ export default function InboxPage() {
       setActiveTab("inbox");
       setTriageMode(true);
     };
-    window.addEventListener("chiefos:triage-mode", openTriage);
-    return () => window.removeEventListener("chiefos:triage-mode", openTriage);
+    window.addEventListener("flux:triage-mode", openTriage);
+    return () => window.removeEventListener("flux:triage-mode", openTriage);
   }, []);
 
   const filteredThreads = threads.filter((t) => {
@@ -345,7 +345,7 @@ export default function InboxPage() {
         }
       } else if (e.key === "c" || e.key === "C") {
         e.preventDefault();
-        window.dispatchEvent(new CustomEvent("chiefos:open-compose"));
+        window.dispatchEvent(new CustomEvent("flux:open-compose"));
       } else if (e.key === "r" || e.key === "R") {
         e.preventDefault();
         if (triageMode && e.shiftKey) {
@@ -370,7 +370,7 @@ export default function InboxPage() {
 
         const subject = selectedThread.subject.startsWith("Re:") ? selectedThread.subject : `Re: ${selectedThread.subject}`;
         window.dispatchEvent(
-          new CustomEvent("chiefos:open-reply", {
+          new CustomEvent("flux:open-reply", {
             detail: {
               to: Array.from(recipients),
               subject,
@@ -388,7 +388,7 @@ export default function InboxPage() {
       } else if (e.key === "e" || e.key === "E") {
         if (!triageMode) return;
         e.preventDefault();
-        window.dispatchEvent(new CustomEvent("chiefos:open-reply", {
+        window.dispatchEvent(new CustomEvent("flux:open-reply", {
           detail: {
             to: [],
             subject: selectedThread?.subject?.startsWith("Re:") ? selectedThread.subject : `Re: ${selectedThread?.subject || ""}`,
@@ -751,7 +751,7 @@ export default function InboxPage() {
                       {triageMode && (
                         <div className="flex items-center gap-1.5 rounded-xl border border-emerald-900/40 bg-emerald-950/15 px-2 py-1.5">
                           <button
-                            onClick={() => window.dispatchEvent(new CustomEvent("chiefos:open-reply", {
+                            onClick={() => window.dispatchEvent(new CustomEvent("flux:open-reply", {
                               detail: {
                                 to: [],
                                 subject: selectedThread.subject.startsWith("Re:") ? selectedThread.subject : `Re: ${selectedThread.subject}`,

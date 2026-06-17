@@ -47,7 +47,7 @@ export async function remindLaterThread(
     data: {
       metadata: {
         ...asMetadata(thread.metadata),
-        chiefosSnooze: {
+        fluxSnooze: {
           mode: options.mode ?? "fixed",
           remindAt,
           note: options.note ?? null,
@@ -66,9 +66,9 @@ export async function clearRelevantSnoozesForThread(userId: string, threadId: st
   if (!thread) return;
 
   const metadata = asMetadata(thread.metadata);
-  if (!metadata.chiefosSnooze) return;
+  if (!metadata.fluxSnooze) return;
 
-  delete metadata.chiefosSnooze;
+  delete metadata.fluxSnooze;
   await prisma.emailThread.update({
     where: { id: thread.id },
     data: { metadata: metadata as Parameters<typeof prisma.emailThread.update>[0]["data"]["metadata"] },

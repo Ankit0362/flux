@@ -326,7 +326,7 @@ export default function CalendarPage() {
               </svg>
               <div className="flex-1">
                 <div className="text-sm font-bold text-amber-200">Google Calendar not connected</div>
-                <div className="text-xs text-amber-400/80 mt-0.5">Connect your Google Calendar to create events directly from ChiefOS.</div>
+                <div className="text-xs text-amber-400/80 mt-0.5">Connect your Google Calendar to create events directly from Flux.</div>
               </div>
               <a
                 href="/api/auth/google?plugin=googlecalendar"

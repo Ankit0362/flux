@@ -82,7 +82,7 @@ export default function LoginPage() {
                   WebkitTextFillColor: "transparent",
                 }}
               >
-                ChiefOS
+                Flux
               </div>
               <div
                 style={{

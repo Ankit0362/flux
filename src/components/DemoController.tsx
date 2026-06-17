@@ -12,7 +12,7 @@ export default function DemoController() {
     // Never use localStorage as a fallback — it is client-forgeable.
     const cookieMode = document.cookie
       .split("; ")
-      .find((row) => row.startsWith("chiefos_mode="))
+      .find((row) => row.startsWith("flux_mode="))
       ?.split("=")[1];
 
     if (cookieMode === "demo") {
@@ -47,7 +47,7 @@ export default function DemoController() {
 
   const handleExit = () => {
     // Clear demo mode cookie
-    document.cookie = "chiefos_mode=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
+    document.cookie = "flux_mode=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
     // Redirect to refresh and trigger live mode
     window.location.href = "/dashboard";
   };

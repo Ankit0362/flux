@@ -1,4 +1,4 @@
-# ChiefOS Feature Build Plan
+# Flux Feature Build Plan
 
 ## Ground Rules
 
@@ -36,7 +36,7 @@ Acceptance:
 
 Scenario:
 - Email says: "Are you free next week?"
-- ChiefOS suggests 3 slots.
+- Flux suggests 3 slots.
 - User sends a reply.
 - Calendar invite is created automatically.
 
@@ -54,7 +54,7 @@ Acceptance:
 ### 3. MCP Agent Actions
 
 Current state:
-- Ask ChiefOS already supports tool calling and action execution for email and calendar.
+- Ask Flux already supports tool calling and action execution for email and calendar.
 
 Build:
 - Add tools for availability suggestions, commitment update, and negotiation execution.
@@ -105,7 +105,7 @@ Acceptance:
 ### 7. Command Palette
 
 Current state:
-- Cmd/Ctrl+K palette exists with navigation, compose, meeting, and Ask ChiefOS.
+- Cmd/Ctrl+K palette exists with navigation, compose, meeting, and Ask Flux.
 
 Build:
 - Add commands for Inbox Zero, Calendar Sync, Quick Add, Find Availability, Meeting Context, and Draft in My Voice.

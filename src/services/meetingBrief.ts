@@ -100,7 +100,7 @@ export async function generateMeetingBrief(userId: string, eventId: string): Pro
 
   // 5. Build AI Prompt
   const genAI = getGenAIClient();
-  const prompt = `You are ChiefOS, an executive assistant preparing a pre-meeting briefing for an executive.
+  const prompt = `You are Flux, an executive assistant preparing a pre-meeting briefing for an executive.
 Return JSON only matching this exact schema:
 {
   "relationshipSummary": "string (Brief summary of relationship health with attendees, max 100 words)",

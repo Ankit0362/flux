@@ -14,10 +14,10 @@ async function main() {
     
     // Upsert a test User
     const user = await prisma.user.upsert({
-      where: { email: "test-user@chiefos.com" },
+      where: { email: "test-user@flux.com" },
       update: {},
       create: {
-        email: "test-user@chiefos.com",
+        email: "test-user@flux.com",
         name: "Test User",
       },
     });
@@ -69,7 +69,7 @@ async function main() {
         threadId: thread.id,
         externalId: "test-msg-001",
         sender: "external-contact@partner.com",
-        recipients: ["test-user@chiefos.com"],
+        recipients: ["test-user@flux.com"],
         subject: "Phase 2 Testing Thread",
         body: "I will review the forecast and send my feedback by next Tuesday.",
         direction: EmailDirection.INBOUND,
@@ -84,7 +84,7 @@ async function main() {
         threadId: thread.id,
         externalId: "test-msg-002",
         sender: "external-contact@partner.com",
-        recipients: ["test-user@chiefos.com"],
+        recipients: ["test-user@flux.com"],
         subject: "Phase 2 Testing Thread - Part 2",
         body: "I will review the forecast and send my feedback by next Tuesday.",
         direction: EmailDirection.INBOUND,
@@ -99,7 +99,7 @@ async function main() {
         threadId: thread.id,
         externalId: "test-msg-003",
         sender: "external-contact@partner.com",
-        recipients: ["test-user@chiefos.com"],
+        recipients: ["test-user@flux.com"],
         subject: "Phase 2 Testing Thread - Part 3",
         body: "Just checking in, no tasks today.",
         direction: EmailDirection.INBOUND,
@@ -120,7 +120,7 @@ async function main() {
         reasoning: "Explicit promise to send feedback by next Tuesday.",
         priority: "medium",
         committerEmail: "external-contact@partner.com",
-        recipientEmail: "test-user@chiefos.com",
+        recipientEmail: "test-user@flux.com",
       },
     ];
 
@@ -171,7 +171,7 @@ async function main() {
         confidence: 0.3, // below threshold
         reasoning: "Tentative suggestion, low confidence.",
         priority: "low",
-        committerEmail: "test-user@chiefos.com",
+        committerEmail: "test-user@flux.com",
         recipientEmail: "external-contact@partner.com",
       },
     ];

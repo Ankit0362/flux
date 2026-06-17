@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
         : "No recommended actions.";
 
       const emailBody = [
-        `ChiefOS Daily Briefing — ${dateStr}`,
+        `Flux Daily Briefing — ${dateStr}`,
         "",
         "══════════════════════════════════════",
         "EXECUTIVE SUMMARY",
@@ -69,11 +69,11 @@ export async function GET(request: NextRequest) {
         actionsText,
         "",
         "──────────────────────────────────────",
-        "Sent by ChiefOS Cognitive Layer",
+        "Sent by Flux Cognitive Layer",
         `Generated at ${briefing.generatedAt}`,
       ].join("\n");
 
-      const subject = `ChiefOS Daily Briefing — ${dateStr}`;
+      const subject = `Flux Daily Briefing — ${dateStr}`;
       const mime = [
         `From: ${user.email}`,
         `To: ${user.email}`,

@@ -1,5 +1,5 @@
 // ============================================================
-// Ask ChiefOS — Shared Types
+// Ask Flux — Shared Types
 // ============================================================
 
 export type EvidenceType = "commitment" | "relationship" | "inbox" | "followup";

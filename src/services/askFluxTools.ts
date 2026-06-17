@@ -1,5 +1,5 @@
 /**
- * Ask ChiefOS — Database Retrieval Tools
+ * Ask Flux — Database Retrieval Tools
  *
  * These functions are the "tools" exposed to Gemini via function calling.
  * CRITICAL SECURITY: userId is ALWAYS injected server-side from the session.
@@ -353,7 +353,7 @@ export async function execute_negotiation(
     startAt: args.selectedSlot.startAt,
     endAt: args.selectedSlot.endAt,
     attendees: args.attendees,
-    description: `Scheduled via ChiefOS from thread ${args.threadId}`,
+    description: `Scheduled via Flux from thread ${args.threadId}`,
   });
   receipts.push({ type: "event_created", id: event?.id, detail: `Event '${args.title}' created` });
 
@@ -393,7 +393,7 @@ export async function execute_negotiation(
 /**
  * The tool schema passed to the Gemini SDK's `tools` parameter.
  */
-export const CHIEFOS_TOOL_DECLARATIONS = [
+export const FLUX_TOOL_DECLARATIONS = [
   {
     name: "get_commitments",
     description:

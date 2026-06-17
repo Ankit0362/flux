@@ -35,7 +35,7 @@ export function Sidebar({
           </div>
           <div>
             <span className="font-extrabold text-lg text-[#0C0A09] font-serif">
-              ChiefOS
+              Flux
             </span>
             <span className="text-[10px] block text-[#57534E] tracking-wider font-semibold uppercase">
               COGNITIVE LAYER

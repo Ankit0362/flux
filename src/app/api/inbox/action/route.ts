@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
       } else {
         thread.metadata = {
           ...(thread.metadata ?? {}),
-          chiefosSnooze: {
+          fluxSnooze: {
             mode: mode ?? "fixed",
             remindAt: mode === "until_reply" ? null : remindAt ?? new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
             note: note ?? null,

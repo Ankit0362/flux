@@ -503,7 +503,7 @@ function ActionButton({
 function ThinkingState({ step }: { step: string }) {
   return (
     <div className="flex flex-col items-center justify-center gap-6 py-10">
-      {/* Pulsing ChiefOS orb */}
+      {/* Pulsing Flux orb */}
       <div className="relative">
         <div className="h-14 w-14 rounded-2xl bg-gradient-to-tr from-amber-600 to-stone-500 flex items-center justify-center font-extrabold text-white text-xl shadow-lg shadow-amber-900/40">
           C
@@ -525,7 +525,7 @@ function ThinkingState({ step }: { step: string }) {
             {step}
           </motion.p>
         </AnimatePresence>
-        <p className="text-[10px] text-slate-500">Ask ChiefOS is thinking...</p>
+        <p className="text-[10px] text-slate-500">Ask Flux is thinking...</p>
       </div>
 
       {/* Premium Shimmer bar */}
@@ -557,7 +557,7 @@ function AnswerView({
           <div className="h-6 w-6 rounded-lg bg-gradient-to-tr from-amber-600 to-stone-500 flex items-center justify-center font-extrabold text-white text-xs shadow">
             C
           </div>
-          <span className="text-[10px] font-bold uppercase tracking-widest text-amber-300">ChiefOS</span>
+          <span className="text-[10px] font-bold uppercase tracking-widest text-amber-300">Flux</span>
         </div>
         <p className="text-[12px] text-slate-200 leading-relaxed">{response.answer}</p>
       </div>
@@ -590,7 +590,7 @@ function AnswerView({
 
       {/* Ask another */}
       <button
-        id="ask-chiefos-reset"
+        id="ask-flux-reset"
         onClick={onReset}
         className="mt-1 w-full py-2.5 rounded-xl text-[11px] font-semibold text-slate-400 hover:text-slate-200 border border-dashed border-slate-800 hover:border-slate-700 hover:bg-slate-900/30 transition-all"
       >
@@ -602,7 +602,7 @@ function AnswerView({
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export default function AskChiefOS() {
+export default function AskFlux() {
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [state, setState] = useState<"idle" | "thinking" | "answered" | "error">("idle");
@@ -630,8 +630,8 @@ export default function AskChiefOS() {
     const openHandler = () => {
       setIsOpen(true);
     };
-    window.addEventListener("chiefos:open-ai", openHandler);
-    return () => window.removeEventListener("chiefos:open-ai", openHandler);
+    window.addEventListener("flux:open-ai", openHandler);
+    return () => window.removeEventListener("flux:open-ai", openHandler);
   }, []);
 
   // Escape shortcut to close AI panel
@@ -733,10 +733,10 @@ export default function AskChiefOS() {
     <>
       {/* ── Floating Trigger Button ─────────────────────────────── */}
       <button
-        id="ask-chiefos-trigger"
+        id="ask-flux-trigger"
         onClick={() => setIsOpen((v) => !v)}
         className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 px-4 py-3 rounded-2xl bg-gradient-to-r from-amber-600 to-stone-600 hover:from-amber-500 hover:to-stone-500 text-white font-bold text-xs shadow-2xl shadow-amber-900/40 hover:shadow-amber-900/60 transition-all hover:-translate-y-0.5 active:scale-95 border border-amber-500/30 group"
-        aria-label="Ask ChiefOS"
+        aria-label="Ask Flux"
       >
         {/* Pulse indicator */}
         <span className="relative flex h-2 w-2">
@@ -745,7 +745,7 @@ export default function AskChiefOS() {
         </span>
 
         <span className="flex items-center gap-1.5">
-          Ask ChiefOS
+          Ask Flux
           <kbd className="text-[8px] font-extrabold bg-white/15 px-1.5 py-0.5 rounded border border-white/20 tracking-wider hidden sm:block">
             ⌘K
           </kbd>
@@ -788,7 +788,7 @@ export default function AskChiefOS() {
               WebkitBackdropFilter: "blur(40px)",
             }}
             role="dialog"
-            aria-label="Ask ChiefOS"
+            aria-label="Ask Flux"
             aria-modal="true"
           >
             {/* Panel Header */}
@@ -798,7 +798,7 @@ export default function AskChiefOS() {
                   C
                 </div>
                 <div>
-                  <p className="text-xs font-extrabold text-white tracking-tight">Ask ChiefOS</p>
+                  <p className="text-xs font-extrabold text-white tracking-tight">Ask Flux</p>
                   <p className="text-[9px] text-amber-400/80 font-semibold uppercase tracking-widest -mt-0.5">
                     AI Chief of Staff
                   </p>
@@ -911,14 +911,14 @@ export default function AskChiefOS() {
                     <div className="flex-1 relative">
                       <input
                         ref={inputRef}
-                        id="ask-chiefos-input"
+                        id="ask-flux-input"
                         type="text"
                         value={query}
                         onChange={(e) => setQuery(e.target.value)}
                         onKeyDown={handleKeyDown}
                         placeholder={SUGGESTED_QUERIES[placeholderIdx]}
                         className="w-full bg-white/5 border border-white/10 focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/50 px-4 py-2.5 text-[12px] text-white placeholder:text-slate-500 rounded-xl pr-10 outline-none transition-all"
-                        aria-label="Ask ChiefOS a question"
+                        aria-label="Ask Flux a question"
                       />
                       <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
                         <svg className="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -927,7 +927,7 @@ export default function AskChiefOS() {
                       </div>
                     </div>
                     <button
-                      id="ask-chiefos-submit"
+                      id="ask-flux-submit"
                       onClick={() => handleSubmit(query)}
                       disabled={!query.trim()}
                       className="h-10 w-10 shrink-0 rounded-xl bg-gradient-to-tr from-amber-600 to-stone-500 hover:from-amber-500 hover:to-stone-400 disabled:opacity-50 disabled:cursor-not-allowed text-white flex items-center justify-center transition-all active:scale-95 shadow-lg shadow-amber-900/30"
@@ -939,7 +939,7 @@ export default function AskChiefOS() {
                     </button>
                   </div>
                   <p className="text-[9px] text-slate-600 mt-2 text-center">
-                    Grounded in your live ChiefOS data · Powered by Gemini
+                    Grounded in your live Flux data · Powered by Gemini
                   </p>
                 </motion.div>
               )}

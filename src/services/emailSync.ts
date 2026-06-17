@@ -147,9 +147,9 @@ export async function persistThreadDetails(
       dbThread.metadata && typeof dbThread.metadata === "object" && !Array.isArray(dbThread.metadata)
         ? { ...(dbThread.metadata as Record<string, unknown>) }
         : {};
-    const snooze = metadata.chiefosSnooze as { mode?: string } | undefined;
+    const snooze = metadata.fluxSnooze as { mode?: string } | undefined;
     if (hasNewInboundMessage && snooze?.mode === "until_reply") {
-      delete metadata.chiefosSnooze;
+      delete metadata.fluxSnooze;
       await tx.emailThread.update({
         where: { id: dbThread.id },
         data: { metadata },
@@ -248,7 +248,7 @@ export async function bootstrapSync(
  *   with a historyId far ahead of our cursor (gap > expected), the fallback
  *   bootstrap re-establishes a correct state.
  *
- * @param userId   - Internal ChiefOS user ID
+ * @param userId   - Internal Flux user ID
  * @param email    - User's email (used for contact attribution)
  * @param message  - The changed message from the Corsair webhook event
  * @param incomingHistoryId - The historyId carried by the webhook event

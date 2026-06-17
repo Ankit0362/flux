@@ -1,7 +1,7 @@
 /**
  * POST /api/ask/action
  *
- * The mutation endpoint for Ask ChiefOS write actions.
+ * The mutation endpoint for Ask Flux write actions.
  * Executes user-approved proposals (send_email, reply_to_thread, create_calendar_event).
  *
  * SECURITY: userId is ALWAYS injected from the server-side DB session.

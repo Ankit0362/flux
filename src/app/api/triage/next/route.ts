@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
     // Filter out snoozed threads
     const nextThread = threads.find(t => {
       const meta = (t.metadata as Record<string, any>) || {};
-      if (meta.chiefosSnooze) return false;
+      if (meta.fluxSnooze) return false;
       return true;
     });
 

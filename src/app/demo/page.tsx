@@ -8,9 +8,9 @@ export default function DemoLauncherPage() {
   const handleLaunch = () => {
     setActivated(true);
     // Set cookie to activate Demo Mode server-side
-    document.cookie = "chiefos_mode=demo; path=/; max-age=86400"; // Expires in 24 hours
+    document.cookie = "flux_mode=demo; path=/; max-age=86400"; // Expires in 24 hours
     // Also save in localStorage for UI convenience
-    localStorage.setItem("chiefos_mode", "demo");
+    localStorage.setItem("flux_mode", "demo");
     // Redirect to dashboard
     window.location.href = "/dashboard";
   };
@@ -29,7 +29,7 @@ export default function DemoLauncherPage() {
           </div>
           <div>
             <span className="font-extrabold text-lg tracking-tight bg-gradient-to-r from-white to-amber-300 bg-clip-text text-transparent">
-              ChiefOS
+              Flux
             </span>
             <span className="text-[9px] block text-amber-400/80 tracking-widest font-extrabold uppercase -mt-0.5">
               COGNITIVE ASSISTANT
@@ -59,7 +59,7 @@ export default function DemoLauncherPage() {
           </div>
 
           <h1 className="text-3xl sm:text-5xl font-black tracking-tight text-white leading-tight">
-            Launch <span className="bg-gradient-to-r from-amber-400 via-stone-300 to-pink-400 bg-clip-text text-transparent">ChiefOS Demo Mode</span>
+            Launch <span className="bg-gradient-to-r from-amber-400 via-stone-300 to-pink-400 bg-clip-text text-transparent">Flux Demo Mode</span>
           </h1>
 
           <p className="text-slate-400 text-sm sm:text-base leading-relaxed max-w-xl mx-auto font-medium">
@@ -124,7 +124,7 @@ export default function DemoLauncherPage() {
       {/* Footer */}
       <footer className="relative w-full text-center py-6 border-t border-slate-900 z-10">
         <p className="text-[10px] text-slate-600 uppercase tracking-widest font-semibold">
-          ChiefOS Cognitive Layer · Hackathon V1
+          Flux Cognitive Layer · Hackathon V1
         </p>
       </footer>
     </div>

@@ -102,7 +102,7 @@ export default function SyncDebugPage() {
     <div className="container">
       <header className="header">
         <div className="title-group">
-          <h1>ChiefOS</h1>
+          <h1>Flux</h1>
           <span className="subtitle">Gmail Integration Control</span>
         </div>
         <div className="status-badge">

@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
       const timeString = new Date(brief.startAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 
       const emailBody = [
-        `ChiefOS Meeting Brief: ${brief.meetingTitle}`,
+        `Flux Meeting Brief: ${brief.meetingTitle}`,
         `Starts at: ${timeString}`,
         "",
         "══════════════════════════════════════",
@@ -83,7 +83,7 @@ export async function GET(request: NextRequest) {
           : "None.",
         "",
         "──────────────────────────────────────",
-        "Sent by ChiefOS Cognitive Layer",
+        "Sent by Flux Cognitive Layer",
       ].join("\n");
 
       const subject = `Meeting Briefing: ${brief.meetingTitle}`;

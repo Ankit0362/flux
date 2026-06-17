@@ -162,7 +162,7 @@ export default function CommandPalette() {
         close();
         startTransition(() => {
           r.push("/inbox");
-          setTimeout(() => window.dispatchEvent(new CustomEvent("chiefos:triage-mode")), 250);
+          setTimeout(() => window.dispatchEvent(new CustomEvent("flux:triage-mode")), 250);
         });
       },
     },
@@ -210,8 +210,8 @@ export default function CommandPalette() {
       },
     },
     {
-      id: "ask_chiefos",
-      name: "Ask ChiefOS",
+      id: "ask_flux",
+      name: "Ask Flux",
       description: "Query your AI Chief of Staff",
       group: "AI",
       icon: (
@@ -219,10 +219,10 @@ export default function CommandPalette() {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
         </svg>
       ),
-      keywords: ["assistant", "help", "chat", "gemini", "ai", "chiefos"],
+      keywords: ["assistant", "help", "chat", "gemini", "ai", "flux"],
       action: (_, __, close) => {
         close();
-        window.dispatchEvent(new CustomEvent("chiefos:open-ai"));
+        window.dispatchEvent(new CustomEvent("flux:open-ai"));
       },
     },
     {
@@ -290,8 +290,8 @@ export default function CommandPalette() {
       setActiveView("compose");
       setErrorMessage(null);
     };
-    window.addEventListener("chiefos:open-compose", handleOpenCompose);
-    return () => window.removeEventListener("chiefos:open-compose", handleOpenCompose);
+    window.addEventListener("flux:open-compose", handleOpenCompose);
+    return () => window.removeEventListener("flux:open-compose", handleOpenCompose);
   }, []);
 
   // Listen for open-reply event
@@ -307,8 +307,8 @@ export default function CommandPalette() {
       setReplyThreadId(detail.threadId);
       setEmailBody("");
     };
-    window.addEventListener("chiefos:open-reply", handleOpenReply);
-    return () => window.removeEventListener("chiefos:open-reply", handleOpenReply);
+    window.addEventListener("flux:open-reply", handleOpenReply);
+    return () => window.removeEventListener("flux:open-reply", handleOpenReply);
   }, []);
 
   // Filtered items based on search query

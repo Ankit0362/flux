@@ -159,7 +159,7 @@ INSTRUCTIONS:
     data: {
       userId,
       calendarId: "primary",
-      externalId: `chiefos-auto-${crypto.randomUUID()}`,
+      externalId: `flux-auto-${crypto.randomUUID()}`,
       title: thread.subject.replace(/^re:\s*/i, "").slice(0, 120) || "Scheduled Meeting",
       startAt: new Date(matchResult.selectedStartAt),
       endAt: new Date(matchResult.selectedEndAt),
@@ -234,7 +234,7 @@ Output strictly valid JSON with "subject" and "body".
     await prisma.emailMessage.create({
       data: {
         threadId: thread.id,
-        externalId: `chiefos-mock-sent-${crypto.randomUUID()}`,
+        externalId: `flux-mock-sent-${crypto.randomUUID()}`,
         sender: user.email,
         recipients: Array.from(uniqueEmails),
         subject: replyDraft.subject || `Re: ${thread.subject.replace(/^re:\s*/i, "")}`,

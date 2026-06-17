@@ -22,7 +22,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <div className="w-8 h-8 border border-[#0C0A09] flex items-center justify-center font-serif font-bold text-sm">
               C
             </div>
-            <span className="font-serif text-xl tracking-tight">ChiefOS</span>
+            <span className="font-serif text-xl tracking-tight">Flux</span>
           </Link>
         </div>
         
@@ -47,7 +47,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </nav>
         
         <div className="p-6 border-t border-[#E8ECF0] text-xs text-[#94A3B8]">
-          ChiefOS Workspace v0.1.0
+          Flux Workspace v0.1.0
         </div>
       </aside>
 

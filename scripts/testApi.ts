@@ -16,10 +16,10 @@ async function runTests() {
   try {
     // 1. Setup Test User and Email Message
     testUser = await prisma.user.upsert({
-      where: { email: "api-test-user@chiefos.com" },
+      where: { email: "api-test-user@flux.com" },
       update: {},
       create: {
-        email: "api-test-user@chiefos.com",
+        email: "api-test-user@flux.com",
         name: "API Test User",
       },
     });
@@ -43,7 +43,7 @@ async function runTests() {
         threadId: thread.id,
         externalId: "api-test-msg-001",
         sender: "partner@example.com",
-        recipients: ["api-test-user@chiefos.com"],
+        recipients: ["api-test-user@flux.com"],
         subject: "API Test Thread",
         body: "I promise to deliver the report tomorrow.",
         direction: EmailDirection.INBOUND,

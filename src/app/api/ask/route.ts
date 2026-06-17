@@ -1,13 +1,13 @@
 import { getCurrentUser } from "@/lib/currentUser";
 import { prisma } from "@/lib/db";
-import { CHIEFOS_TOOL_DECLARATIONS, dispatchTool } from "@/services/askChiefOSTools";
+import { FLUX_TOOL_DECLARATIONS, dispatchTool } from "@/services/askFluxTools";
 import { AskRequest, AskResponse } from "@/types/ask";
 import { GoogleGenAI, Content, Part } from "@google/genai";
 import { NextRequest, NextResponse } from "next/server";
 
 // ─── System Instruction ───────────────────────────────────────────────────────
 
-const SYSTEM_INSTRUCTION = `You are Ask ChiefOS, an elite AI Chief of Staff built into ChiefOS.
+const SYSTEM_INSTRUCTION = `You are Ask Flux, an elite AI Chief of Staff built into Flux.
 Your role is to answer questions about the user's commitments, relationships, inbox, and follow-ups — and to take action on their behalf.
 
 RULES:
@@ -155,7 +155,7 @@ export async function POST(request: NextRequest) {
         contents,
         config: {
           systemInstruction: SYSTEM_INSTRUCTION,
-          tools: [{ functionDeclarations: CHIEFOS_TOOL_DECLARATIONS as never }],
+          tools: [{ functionDeclarations: FLUX_TOOL_DECLARATIONS as never }],
           // Only enforce JSON schema on the final text response (not tool-call turns)
         },
       });
@@ -301,7 +301,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(finalAnswer);
   } catch (err: unknown) {
-    console.error("Ask ChiefOS API error:", err);
+    console.error("Ask Flux API error:", err);
     const message = err instanceof Error ? err.message : "Internal server error.";
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }

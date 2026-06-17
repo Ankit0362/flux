@@ -223,8 +223,8 @@ export class DemoStore {
         threadId: "demo-thread-client",
         externalId: "g-msg-client-1",
         sender: `David Vance <${CLIENT_EMAIL}>`,
-        recipients: ["user@chiefos.ai"],
-        subject: "URGENT: Acme Corp / ChiefOS Integration specs missing",
+        recipients: ["user@flux.ai"],
+        subject: "URGENT: Acme Corp / Flux Integration specs missing",
         body: "Hi there, we were expecting the final API integration documentation yesterday. Our engineering team is currently blocked from starting the sandbox tests. When can we expect this deliverable? Let's make sure it doesn't slip, as our launch is scheduled for next Monday. Let's sync up as soon as possible.",
         direction: "INBOUND",
         receivedAt: oneDayAgo,
@@ -233,9 +233,9 @@ export class DemoStore {
         id: "demo-msg-client-2",
         threadId: "demo-thread-client",
         externalId: "g-msg-client-2",
-        sender: "user@chiefos.ai",
+        sender: "user@flux.ai",
         recipients: [CLIENT_EMAIL],
-        subject: "Re: Acme Corp / ChiefOS Integration specs missing",
+        subject: "Re: Acme Corp / Flux Integration specs missing",
         body: "Hi David, I am finalizing the API schema documentation today. I will send it over first thing tomorrow morning so your developers can get unblocked. Apologies for the slight delay.",
         direction: "OUTBOUND",
         receivedAt: twoDaysAgo,
@@ -246,7 +246,7 @@ export class DemoStore {
         threadId: "demo-thread-recruiter",
         externalId: "g-msg-recruiter-1",
         sender: `Sarah Jenkins <${RECRUITER_EMAIL}>`,
-        recipients: ["user@chiefos.ai"],
+        recipients: ["user@flux.ai"],
         subject: "Apex Talent Recruitment - Chief Technology Officer search next steps",
         body: "Hi, thanks for catching up yesterday. I enjoyed hearing about your background. I've attached the Apex recruitment agreement and candidate NDA. Please review and sign the NDA so we can begin presenting candidates next week. Also, let me know if you had a chance to compile your salary benchmark expectations.",
         direction: "INBOUND",
@@ -258,7 +258,7 @@ export class DemoStore {
         threadId: "demo-thread-founder",
         externalId: "g-msg-founder-1",
         sender: `Elena Rostova <${FOUNDER_EMAIL}>`,
-        recipients: ["user@chiefos.ai"],
+        recipients: ["user@flux.ai"],
         subject: "YC Pitch deck review & Sequoia intros",
         body: "Hey, thanks again for reviewing our YC pitch deck and sharing your mockup feedback! That was extremely helpful. As discussed, would you be open to introducing us to the Venture Partner at Sequoia who handles AI investments? Let me know when you have a free moment. Thanks!",
         direction: "INBOUND",
@@ -270,7 +270,7 @@ export class DemoStore {
         threadId: "demo-thread-advisor",
         externalId: "g-msg-advisor-1",
         sender: `Dr. Marcus Aurelius <${ADVISOR_EMAIL}>`,
-        recipients: ["user@chiefos.ai"],
+        recipients: ["user@flux.ai"],
         subject: "Advisors agreement feedback & Catch up",
         body: "Hello! I hope you are doing well. I've reviewed your suggestions for the advisory agreement and they look solid. Let's catch up over coffee this Thursday to finalize it. Let me know if 10 AM works for you.",
         direction: "INBOUND",
@@ -282,7 +282,7 @@ export class DemoStore {
       {
         id: "demo-thread-client",
         externalId: "g-thread-client",
-        subject: "URGENT: Acme Corp / ChiefOS Integration specs missing",
+        subject: "URGENT: Acme Corp / Flux Integration specs missing",
         snippet: "Hi there, we were expecting the final API integration documentation yesterday...",
         labels: ["INBOX", "UNREAD"],
         followUpNeeded: true,
@@ -398,7 +398,7 @@ export class DemoStore {
 
     return {
       userName: "Alex Operator",
-      userEmail: "alex@chiefos.ai",
+      userEmail: "alex@flux.ai",
       unreadEmailCount: this.threads.filter((t) => t.labels.includes("UNREAD")).length,
       stats: {
         pendingCount: pending.length,
@@ -451,7 +451,7 @@ export class DemoStore {
         };
       }),
       isConnected: true,
-      email: "alex@chiefos.ai",
+      email: "alex@flux.ai",
       userId: "demo-user-id",
     };
   }
@@ -468,7 +468,7 @@ export class DemoStore {
           ...(m.recipients || []),
         ])
       )
-    ).filter((email) => email !== "alex@chiefos.ai" && email !== "user@chiefos.ai");
+    ).filter((email) => email !== "alex@flux.ai" && email !== "user@flux.ai");
 
     const relatedContacts = this.contacts.filter((c) => contactEmails.includes(c.email));
 
@@ -639,8 +639,8 @@ export class DemoStore {
       threadId: "demo-thread-client",
       externalId: "g-msg-client-new",
       sender: `David Vance <${CLIENT_EMAIL}>`,
-      recipients: ["user@chiefos.ai"],
-      subject: "RE: Acme Corp / ChiefOS Integration specs missing - escalation",
+      recipients: ["user@flux.ai"],
+      subject: "RE: Acme Corp / Flux Integration specs missing - escalation",
       body: "Hi, following up on this. We have a board meeting on Thursday where I need to report on our integration progress. I need that API document now. If we can't sync today, I will have to schedule a call with our directors. Please update me ASAP.",
       direction: "INBOUND",
       receivedAt: now,

@@ -105,7 +105,7 @@ export async function generateMeetingPrep(userId: string, eventId: string): Prom
 
   // Build AI prompt requesting structured prep
   const genAI = getGenAIClient();
-  const prompt = `You are ChiefOS, an executive assistant preparing a meeting brief.
+  const prompt = `You are Flux, an executive assistant preparing a meeting brief.
 Return JSON only matching this schema:
 {"aiSummary":"string (3-bullet narrative, max 150 words)","suggestedTalkingPoints":["string (3-5 items)"],"discussionTopics":["string (2-4 items)"]}
 

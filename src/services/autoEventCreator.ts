@@ -134,7 +134,7 @@ INSTRUCTIONS:
     data: {
       userId,
       calendarId: "primary",
-      externalId: `chiefos-auto-${crypto.randomUUID()}`, // Dummy ID since we aren't pushing to Google Calendar yet
+      externalId: `flux-auto-${crypto.randomUUID()}`, // Dummy ID since we aren't pushing to Google Calendar yet
       title: thread.subject.replace(/^re:\s*/i, "").slice(0, 120) || "Scheduled Meeting",
       startAt: new Date(parsed.selectedStartAt),
       endAt: new Date(parsed.selectedEndAt),
@@ -176,7 +176,7 @@ INSTRUCTIONS:
   await prisma.emailMessage.create({
     data: {
       threadId: thread.id,
-      externalId: `chiefos-mock-sent-${crypto.randomUUID()}`,
+      externalId: `flux-mock-sent-${crypto.randomUUID()}`,
       sender: user.email,
       recipients: Array.from(uniqueEmails),
       subject: `Re: ${thread.subject.replace(/^re:\s*/i, "")}`,

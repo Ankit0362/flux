@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 /**
- * ChiefOS Route Middleware
+ * Flux Route Middleware
  *
  * Responsibilities:
  * 1. Block unauthenticated access to /api/admin/* in production

@@ -49,7 +49,7 @@ export async function POST() {
       : "All relationships are healthy.";
 
     const emailBody = [
-      `ChiefOS Daily Briefing — ${dateStr}`,
+      `Flux Daily Briefing — ${dateStr}`,
       "",
       "═══════════════════════════════════════",
       "EXECUTIVE SUMMARY",
@@ -72,12 +72,12 @@ export async function POST() {
       relationshipsText,
       "",
       "─────────────────────────────────────────",
-      "Sent by ChiefOS Cognitive Layer",
+      "Sent by Flux Cognitive Layer",
       `Generated at ${briefing.generatedAt}`,
     ].join("\n");
 
     // Build raw MIME email
-    const subject = `ChiefOS Daily Briefing — ${dateStr}`;
+    const subject = `Flux Daily Briefing — ${dateStr}`;
     const mime = [
       `From: ${user.email}`,
       `To: ${user.email}`,
