@@ -394,9 +394,27 @@ export default function ContactsPage() {
                         )}
                       </div>
 
-                      <span className="text-[10px]">
-                        Last active: <span className="text-[#57534E] font-semibold">{formatDate(c.lastInteractionAt)}</span>
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px]">
+                          Last active: <span className="text-[#57534E] font-semibold">{formatDate(c.lastInteractionAt)}</span>
+                        </span>
+                        {/* Follow Up Quick Action */}
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            window.dispatchEvent(new CustomEvent("flux:open-compose", {
+                              detail: { to: [c.email], subject: `Following up — ${c.name || c.email.split("@")[0]}` }
+                            }));
+                          }}
+                          className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold bg-[#FAFAF9] border border-[#E8ECF0] text-[#57534E] hover:text-[#A16207] hover:border-amber-500/40 hover:bg-amber-50 transition-all"
+                        >
+                          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                          </svg>
+                          Follow Up
+                        </button>
+                      </div>
                     </div>
                   </a>
                 );
