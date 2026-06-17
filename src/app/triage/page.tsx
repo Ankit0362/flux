@@ -156,7 +156,7 @@ export default function TriagePage() {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-[#FAFAF9] text-[#0C0A09]">
+    <div className="h-screen flex flex-col bg-[#FAFAF9] text-[#0C0A09] relative">
       {/* Header */}
       <header className="px-6 py-4 border-b border-[#E8ECF0] flex justify-between items-center shrink-0">
         <div className="flex items-center gap-3">
@@ -185,12 +185,12 @@ export default function TriagePage() {
           
           <div className="flex-1 overflow-y-auto p-6 space-y-6">
             {data.thread.messages.map((m: any) => (
-              <div key={m.id} className="border border-[#E8ECF0] rounded-xl p-4 bg-[#FAFAF9]">
+              <div key={m.id} className="border border-[#E8ECF0] rounded-2xl p-5 bg-white shadow-sm">
                 <div className="flex justify-between items-center mb-4">
-                  <span className="font-bold text-sm">{m.sender}</span>
-                  <span className="text-xs text-[#57534E]">{new Date(m.receivedAt).toLocaleString()}</span>
+                  <span className="font-bold text-sm text-[#0C0A09]">{m.sender}</span>
+                  <span className="text-xs font-medium text-[#57534E]">{new Date(m.receivedAt).toLocaleString()}</span>
                 </div>
-                <div className="text-sm text-[#0C0A09] whitespace-pre-wrap">{m.body}</div>
+                <div className="text-sm text-[#0C0A09] whitespace-pre-wrap leading-relaxed">{m.body}</div>
               </div>
             ))}
           </div>
@@ -252,13 +252,28 @@ export default function TriagePage() {
         </div>
       </div>
 
-      {/* Footer Action Bar */}
-      <footer className="px-6 py-4 bg-[#0C0A09] text-white flex justify-center gap-6 shrink-0">
-        <kbd className="px-3 py-1.5 bg-slate-800 rounded font-bold text-sm tracking-widest"><span className="text-emerald-400">E</span> Reply</kbd>
-        <kbd className="px-3 py-1.5 bg-slate-800 rounded font-bold text-sm tracking-widest"><span className="text-emerald-400">A</span> Archive</kbd>
-        <kbd className="px-3 py-1.5 bg-slate-800 rounded font-bold text-sm tracking-widest"><span className="text-emerald-400">M</span> Meeting</kbd>
-        <kbd className="px-3 py-1.5 bg-slate-800 rounded font-bold text-sm tracking-widest"><span className="text-emerald-400">R</span> Remind</kbd>
-      </footer>
+      {/* Footer Action Bar (Floating Pill Style) */}
+      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-2 p-1.5 bg-white border border-[#E8ECF0] rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] z-50 items-center">
+        <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-[#57534E] hover:bg-[#FAFAF9] hover:text-[#0C0A09] transition-all cursor-pointer">
+          <kbd className="px-1.5 py-0.5 bg-[#F3F4F6] border border-[#E8ECF0] rounded text-[10px] text-amber-600 shadow-sm">E</kbd>
+          Reply
+        </div>
+        <div className="w-px h-4 bg-[#E8ECF0]"></div>
+        <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-[#57534E] hover:bg-[#FAFAF9] hover:text-[#0C0A09] transition-all cursor-pointer">
+          <kbd className="px-1.5 py-0.5 bg-[#F3F4F6] border border-[#E8ECF0] rounded text-[10px] text-amber-600 shadow-sm">A</kbd>
+          Archive
+        </div>
+        <div className="w-px h-4 bg-[#E8ECF0]"></div>
+        <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-[#57534E] hover:bg-[#FAFAF9] hover:text-[#0C0A09] transition-all cursor-pointer">
+          <kbd className="px-1.5 py-0.5 bg-[#F3F4F6] border border-[#E8ECF0] rounded text-[10px] text-amber-600 shadow-sm">M</kbd>
+          Meeting
+        </div>
+        <div className="w-px h-4 bg-[#E8ECF0]"></div>
+        <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-[#57534E] hover:bg-[#FAFAF9] hover:text-[#0C0A09] transition-all cursor-pointer">
+          <kbd className="px-1.5 py-0.5 bg-[#F3F4F6] border border-[#E8ECF0] rounded text-[10px] text-amber-600 shadow-sm">R</kbd>
+          Remind
+        </div>
+      </div>
     </div>
   );
 }

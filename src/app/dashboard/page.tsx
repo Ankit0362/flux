@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { CommitmentDTO } from "@/types/commitments";
 import { parseEmailAddress } from "@/lib/emailUtils";
 import { ExecutiveBriefingDTO } from "@/types/briefing";
-import { AuroraBackground } from "@/components/ui/AuroraBackground";
+// AuroraBackground removed for light theme consistency
 import { SpotlightCard } from "@/components/ui/SpotlightCard";
 import { BentoGrid } from "@/components/ui/BentoGrid";
 import { motion, AnimatePresence } from "framer-motion";
@@ -364,13 +364,10 @@ export default function DashboardPage() {
       />
 
       {/* Main Content Area */}
-      <AuroraBackground
-        showRadialGradient={true}
-        className="flex-1 flex flex-col overflow-y-auto w-full selection:bg-amber-500 selection:text-amber-200 bg-transparent"
-      >
+      <main className="flex-1 flex flex-col overflow-y-auto w-full selection:bg-amber-500 selection:text-amber-200 relative z-0">
         {/* Glow Effects */}
-        <div className="absolute top-0 right-1/4 w-[400px] h-[400px] bg-amber-900/10 rounded-full blur-[100px] pointer-events-none" />
-        <div className="absolute bottom-0 left-1/4 w-[400px] h-[400px] bg-stone-950/10 rounded-full blur-[100px] pointer-events-none" />
+        <div className="absolute top-0 right-1/4 w-[500px] h-[500px] bg-amber-500/5 rounded-full blur-[120px] pointer-events-none z-[-1]" />
+        <div className="absolute bottom-0 left-1/4 w-[500px] h-[500px] bg-sky-500/5 rounded-full blur-[120px] pointer-events-none z-[-1]" />
 
         {/* Top Header */}
         <header className="p-6 md:p-8 border-b border-[#E8ECF0] flex flex-col md:flex-row md:items-center justify-between gap-4 shrink-0 relative z-10">
@@ -1121,7 +1118,7 @@ export default function DashboardPage() {
             </FocusColumn>
           </div>
         </div>
-      </AuroraBackground>
+      </main>
     </div>
   );
 }
@@ -1188,13 +1185,13 @@ function BriefingItemCard({
 
   const cardBorderClass = isPending
     ? commitment.riskLevel === "HIGH"
-      ? "border-l-2 border-l-rose-500 bg-[#0e0a16]/40 hover:bg-[#120c1d]/50 shadow-[0_0_15px_-3px_rgba(244,63,94,0.15)]"
+      ? "border-l-2 border-l-rose-500 bg-white"
       : commitment.riskLevel === "MEDIUM"
-        ? "border-l-2 border-l-amber-500 bg-[#0e0f18]/40 hover:bg-[#131522]/50 shadow-[0_0_15px_-3px_rgba(245,158,11,0.08)]"
-        : "border-l-2 border-l-slate-700 bg-white hover:bg-[#F3F4F6]"
+        ? "border-l-2 border-l-amber-500 bg-white"
+        : "border-l-2 border-l-slate-400 bg-white"
     : isCompleted
-      ? "border-l-2 border-l-emerald-500/80 bg-[#0c0f1f]/20"
-      : "border-l-2 border-l-slate-600/80 bg-[#0c0f1f]/20";
+      ? "border-l-2 border-l-emerald-500 bg-emerald-50"
+      : "border-l-2 border-l-slate-400 bg-slate-50";
 
   return (
     <div
@@ -1421,7 +1418,7 @@ function EmptyListState({ message }: { message: string }) {
 
 function ShimmerStatsCard() {
   return (
-    <div className="p-5 rounded-2xl border border-[#E8ECF0] bg-[#0c0f1f]/20 animate-pulse flex flex-col justify-between h-28">
+    <div className="p-5 rounded-2xl border border-[#E8ECF0] bg-white shadow-sm animate-pulse flex flex-col justify-between h-28">
       <div className="h-3 w-24 bg-[#F3F4F6] rounded"></div>
       <div className="h-8 w-12 bg-[#F3F4F6] rounded mt-3"></div>
       <div className="h-2 w-32 bg-[#F3F4F6] rounded mt-3"></div>
@@ -1435,7 +1432,7 @@ function ShimmerList() {
       {[1, 2, 3].map((i) => (
         <div
           key={i}
-          className="p-4 rounded-xl border border-[#E8ECF0] bg-[#0c0f1f]/20 animate-pulse flex flex-col gap-3"
+          className="p-4 rounded-xl border border-[#E8ECF0] bg-white shadow-sm animate-pulse flex flex-col gap-3"
         >
           <div className="flex justify-between items-center">
             <div className="h-3 w-16 bg-[#F3F4F6] rounded"></div>
@@ -1474,7 +1471,7 @@ function ContactCard({ contact }: { contact: ContactDTO }) {
   const initial = (contact.name || contact.email).charAt(0).toUpperCase();
 
   return (
-    <div className="p-3.5 rounded-xl border border-[#E8ECF0]/50 bg-[#0c0f1f]/30 hover:bg-[#F3F4F6] hover:border-[#E8ECF0]/50 transition-all group">
+    <div className="p-3.5 rounded-xl border border-[#E8ECF0] bg-white shadow-sm hover:bg-[#FAFAF9] hover:border-[#E8ECF0]/80 transition-all group">
       <div className="flex items-start gap-3">
         {/* Avatar with score ring */}
         <div
@@ -1861,7 +1858,7 @@ export function ExecutiveBriefingWidget({
                 briefing.relationshipsAttention.map((rel) => (
                   <div
                     key={rel.contactId}
-                    className="p-3 rounded-xl border border-[#E8ECF0] bg-[#0c0f1f]/30 hover:bg-[#F3F4F6] transition-all flex flex-col gap-1.5"
+                    className="p-3 rounded-xl border border-[#E8ECF0] bg-white shadow-sm hover:bg-[#FAFAF9] transition-all flex flex-col gap-1.5"
                   >
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-xs font-bold text-[#0C0A09] truncate">
