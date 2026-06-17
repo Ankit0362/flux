@@ -17,9 +17,9 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Flux - Email-driven cognitive assistant",
+  title: "Flux - AI Executive Assistant",
   description:
-    "Flux turns your raw Gmail stream into actionable, auto-tracked commitments and follow-ups. Built for busy operators.",
+    "Flux securely connects to your Google Workspace to read Gmail and Google Calendar data. It automatically extracts action items, tracks commitments, and summarizes upcoming meetings to help you prepare for your day.",
 };
 
 export default function RootLayout({
