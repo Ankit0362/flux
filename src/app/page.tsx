@@ -54,9 +54,9 @@ export default function Home() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 1.2, duration: 1 }}
-          className="text-xl md:text-2xl text-[#94A3B8] font-light max-w-2xl leading-relaxed"
+          className="text-xl md:text-2xl text-[#94A3B8] font-light max-w-3xl leading-relaxed"
         >
-          Flux intercepts your emails and calendar, extracting open loops and commitments into a floating 3D spatial dashboard. Scroll down to discover.
+          Flux connects to your Google Workspace to securely read your Gmail and Calendar. We automatically extract action items, summarize emails, and prepare you for upcoming meetings in an intelligent, unified dashboard.
         </motion.p>
       </section>
 
@@ -64,9 +64,9 @@ export default function Home() {
       <section className="min-h-screen relative z-10 bg-black/40 backdrop-blur-sm border-t border-white/10 pt-32 pb-32">
         <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-8">
           {[
-            { id: "01", title: "Extract", desc: "Our neural core automatically extracts action items and commitments from your raw email stream." },
-            { id: "02", title: "Synthesize", desc: "Calendar events are paired with relationship intelligence and past correspondence." },
-            { id: "03", title: "Act", desc: "Transition into our hyper-usable, ultra-premium 2D workspace to knock out your daily brief." }
+            { id: "01", title: "Email Triage", desc: "Flux securely reads your Gmail to detect open loops, commitments, and action items, so you never drop the ball on an important thread." },
+            { id: "02", title: "Calendar Intelligence", desc: "Syncs with Google Calendar to provide relationship intelligence, past correspondence context, and summaries before your meetings begin." },
+            { id: "03", title: "Privacy First", desc: "Your data is yours. Flux strictly requests read-only permissions necessary to synthesize your daily brief and never shares your personal information." }
           ].map((item, i) => (
             <div key={item.id} className="p-12 border border-white/10 bg-black/60 backdrop-blur-md rounded-lg hover:border-[#00F0FF]/50 transition-colors">
               <div className="text-[#00F0FF] font-mono text-xl mb-6">{item.id}</div>
@@ -76,11 +76,26 @@ export default function Home() {
           ))}
         </div>
         
-        <div className="text-center mt-32">
+        <div className="text-center mt-32 mb-32">
           <Link href="/login" className="inline-flex px-12 py-6 bg-white text-black text-sm uppercase tracking-[0.2em] font-bold hover:bg-[#00F0FF] transition-colors">
             Experience the Workspace
           </Link>
         </div>
+
+        {/* Footer for Compliance */}
+        <footer className="w-full border-t border-white/10 pt-12 pb-12 px-8 flex flex-col md:flex-row justify-between items-center gap-6 mt-12 bg-black/80 backdrop-blur-md">
+          <div className="text-[#94A3B8] text-sm">
+            &copy; {new Date().getFullYear()} Flux Cognitive Assistant. All rights reserved.
+          </div>
+          <div className="flex gap-6 text-sm">
+            <Link href="/privacy" className="text-[#94A3B8] hover:text-white transition-colors">
+              Privacy Policy
+            </Link>
+            <Link href="/terms" className="text-[#94A3B8] hover:text-white transition-colors">
+              Terms of Service
+            </Link>
+          </div>
+        </footer>
       </section>
     </main>
   );
